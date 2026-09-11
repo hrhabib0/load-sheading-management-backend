@@ -1,0 +1,23 @@
+node_modules
+dist
+# Keep environment variables out of version control
+.env
+.env.*
+!.env.example
+
+/src/generated
+/generated/prisma
+
+
+# Extra files
+.agents
+.claude
+.windsurf
+
+# Lock Files
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+skills-lock.json
+pnpm-workspace.yaml
+.vscode

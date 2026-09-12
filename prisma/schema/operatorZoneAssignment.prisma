@@ -1,0 +1,17 @@
+model OperatorZoneAssignment {
+  id String @id @default(uuid())
+
+  assignedAt DateTime @default(now())
+  assignedBy String?
+
+  operatorId String
+  operator   User   @relation(fields: [operatorId], references: [id])
+
+  zoneId String
+  zone   Zone   @relation(fields: [zoneId], references: [id])
+
+  @@unique([operatorId, zoneId])
+  @@index([operatorId])
+  @@index([zoneId])
+  @@map("operator_zone_assignments")
+}

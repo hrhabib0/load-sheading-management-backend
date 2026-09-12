@@ -1,0 +1,21 @@
+model CustomerProfile {
+  id String @id @default(uuid())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  areaId String
+  area   Area   @relation(fields: [areaId], references: [id])
+
+  priorityId String
+  priority   CustomerPriority @relation(fields: [priorityId], references: [id])
+
+  reports CustomerReport[]
+
+  @@index([areaId])
+  @@index([priorityId])
+  @@map("customer_profiles")
+}

@@ -1,0 +1,31 @@
+model WorkTask {
+  id           String         @id @default(uuid())
+  incidentId   String
+  technicianId String?
+  title        String
+  description  String?
+  status       WorkTaskStatus @default(PENDING)
+
+  assignedAt  DateTime?
+  acceptedAt  DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+
+  rejectionReason String?
+  failureReason   String?
+  repairNote      String?
+
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  incident   OutageIncident @relation(fields: [incidentId], references: [id])
+  technician User?          @relation("TechnicianTasks", fields: [technicianId], references: [id])
+  creator    User           @relation("TaskCreator", fields: [createdBy], references: [id])
+
+  @@index([incidentId])
+  @@index([technicianId])
+  @@index([status])
+  @@index([createdBy])
+  @@map("work_tasks")
+}

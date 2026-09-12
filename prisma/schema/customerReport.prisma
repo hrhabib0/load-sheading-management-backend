@@ -1,0 +1,22 @@
+model CustomerReport {
+  id          String               @id @default(uuid())
+  description String
+  reportedAt  DateTime             @default(now())
+  status      CustomerReportStatus @default(PENDING)
+  cancelledAt DateTime?
+  linkedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  customerId String
+  customer   CustomerProfile @relation(fields: [customerId], references: [id])
+
+  incidentId String?
+  incident   OutageIncident? @relation(fields: [incidentId], references: [id])
+
+  @@index([customerId])
+  @@index([incidentId])
+  @@index([status])
+  @@map("customer_reports")
+}

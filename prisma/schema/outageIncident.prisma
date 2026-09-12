@@ -1,0 +1,32 @@
+model OutageIncident {
+  id String @id @default(uuid())
+
+  status      OutageIncidentStatus @default(INVESTIGATING)
+  description String?
+  startedAt   DateTime?
+  restoredAt  DateTime?
+  closedAt    DateTime?
+
+  verifiedAt     DateTime?
+  resolutionNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  feederId String
+  feeder   Feeder @relation(fields: [feederId], references: [id])
+
+  createdBy String
+  creator   User   @relation("IncidentCreator", fields: [createdBy], references: [id])
+
+  verifiedBy String?
+  verifier   User?   @relation("IncidentVerifier", fields: [verifiedBy], references: [id])
+
+  reports CustomerReport[]
+  tasks   WorkTask[]
+
+  @@index([feederId])
+  @@index([createdBy])
+  @@index([status])
+  @@map("outage_incidents")
+}

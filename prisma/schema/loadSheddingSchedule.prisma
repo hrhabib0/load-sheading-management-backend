@@ -1,0 +1,33 @@
+model LoadSheddingSchedule {
+  id          String                     @id @default(uuid())
+  title       String
+  description String?
+  status      LoadSheddingScheduleStatus @default(DRAFT)
+
+  createdBy   String
+  approvedBy  String?
+  approvedAt  DateTime?
+  publishedAt DateTime?
+
+  scheduledStartAt DateTime
+  scheduledEndAt   DateTime
+
+  actualStartAt DateTime?
+  actualEndAt   DateTime?
+
+  cancelledAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creator  User  @relation("LoadSheddingCreator", fields: [createdBy], references: [id])
+  approver User? @relation("LoadSheddingApprover", fields: [approvedBy], references: [id])
+
+  feeders LoadSheddingFeeder[]
+
+  @@index([createdBy])
+  @@index([approvedBy])
+  @@index([status])
+  @@index([scheduledStartAt])
+  @@map("load_shedding_schedules")
+}

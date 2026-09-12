@@ -1,0 +1,13 @@
+model PlannedOutageFeeder {
+  id              String   @id @default(uuid())
+  plannedOutageId String
+  feederId        String
+  createdAt       DateTime @default(now())
+
+  plannedOutage PlannedOutage @relation(fields: [plannedOutageId], references: [id])
+  feeder        Feeder        @relation(fields: [feederId], references: [id])
+
+  @@unique([plannedOutageId, feederId])
+  @@index([plannedOutageId])
+  @@index([feederId])
+}

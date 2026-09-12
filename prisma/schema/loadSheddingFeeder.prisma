@@ -1,0 +1,14 @@
+model LoadSheddingFeeder {
+  id         String   @id @default(uuid())
+  scheduleId String
+  feederId   String
+  createdAt  DateTime @default(now())
+
+  schedule LoadSheddingSchedule @relation(fields: [scheduleId], references: [id])
+  feeder   Feeder               @relation(fields: [feederId], references: [id])
+
+  @@unique([scheduleId, feederId])
+  @@index([scheduleId])
+  @@index([feederId])
+  @@map("load_shedding_feeders")
+}

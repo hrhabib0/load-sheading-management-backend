@@ -1,0 +1,17 @@
+model ZoneManagerAssignment {
+  id String @id @default(uuid())
+
+  assignedAt DateTime @default(now())
+  assignedBy String?
+
+  managerId String
+  manager   User   @relation(fields: [managerId], references: [id])
+
+  zoneId String
+  zone   Zone   @relation(fields: [zoneId], references: [id])
+
+  @@unique([managerId])
+  @@unique([zoneId])
+  @@index([zoneId])
+  @@map("zone_manager_assignments")
+}

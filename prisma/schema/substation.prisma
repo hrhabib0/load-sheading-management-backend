@@ -1,0 +1,18 @@
+model Substation {
+  id String @id @default(uuid())
+
+  name      String
+  code      String   @unique
+  location  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  zoneId String
+  zone   Zone   @relation(fields: [zoneId], references: [id])
+
+  feeders Feeder[]
+
+  @@index([zoneId])
+  @@map("substations")
+}

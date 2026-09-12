@@ -1,0 +1,35 @@
+model PlannedOutage {
+  id          String  @id @default(uuid())
+  title       String
+  description String?
+
+  status PlannedOutageStatus @default(DRAFT)
+
+  createdBy  String
+  approvedBy String?
+  approvedAt DateTime?
+
+  publishedAt DateTime?
+
+  scheduledStartAt DateTime
+  scheduledEndAt   DateTime
+
+  actualStartAt DateTime?
+  actualEndAt   DateTime?
+
+  cancelledAt        DateTime?
+  cancellationReason String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creator  User  @relation("PlannedOutageCreator", fields: [createdBy], references: [id])
+  approver User? @relation("PlannedOutageApprover", fields: [approvedBy], references: [id])
+
+  feeders PlannedOutageFeeder[]
+
+  @@index([createdBy])
+  @@index([approvedBy])
+  @@index([status])
+  @@index([scheduledStartAt])
+}

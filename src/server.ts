@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import app from "./app.js";
 import config from "./app/config/index.js";
 import { prisma } from "./app/lib/prisma.js";
+import { redisClient } from "./app/lib/redis.js";
 
 const PORT = config.port;
 
@@ -9,6 +10,9 @@ const main = async () => {
     try {
         await prisma.$connect();
         console.log("Connected to the database successfully.");
+
+        await redisClient.connect();
+        console.log("Redis Connected Successfully.");
 
         app.listen(PORT, () => {
             console.log(`Server is running on port ${PORT}`);

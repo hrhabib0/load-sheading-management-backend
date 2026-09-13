@@ -1,0 +1,235 @@
+import bcrypt from "bcryptjs";
+import { AppError } from "../../errors/AppError.js";
+import { prisma } from "../../lib/prisma.js";
+import { IRegisterUserPayload, IVerifyEmailPayload } from "./auth.interface.js";
+import httpStatus from "http-status";
+import config from "../../config/index.js";
+import crypto from "crypto";
+import { redisClient } from "../../lib/redis.js";
+import path from "path";
+import ejs from "ejs";
+import { transporter } from "../../lib/nodeMailer.js";
+import { jwtUtils } from "../../utils/jwt.js";
+import { SignOptions } from "jsonwebtoken";
+
+
+
+const registerUser = async (payload: IRegisterUserPayload) => {
+    const { name, email, password, phone, areaId, priorityId } = payload;
+
+    // 1. Check whether email already exists
+    const existingUser = await prisma.user.findUnique({
+        where: {
+            email,
+        },
+    });
+
+    if (existingUser) {
+        throw new AppError(httpStatus.CONFLICT, "User already exists with this email");
+    }
+
+    // 2. Check whether area exists
+    // const area = await prisma.area.findUnique({
+    //     where: {
+    //         id: areaId,
+    //     },
+    // });
+
+    // if (!area) {
+    //     throw new AppError(httpStatus.NOT_FOUND, "Area not found");
+    // }
+
+    // 3. Check whether priority exists
+    // const priority = await prisma.customerPriority.findUnique({
+    //     where: {
+    //         id: priorityId,
+    //     },
+    // });
+
+    // if (!priority) {
+    //     throw new AppError(httpStatus.NOT_FOUND, "Customer priority not found");
+    // }
+
+    // 4. Hash password
+    const hashedPassword = await bcrypt.hash(password, Number(config.bcrypt_salt_rounds));
+
+    // set/send otp and user data to redis
+    const otpValue = crypto.randomInt(100000, 1000000);
+    const otpKey = `email-verification-otp:${email}`;
+    const expirationSeconds = 5 * 60;
+    await redisClient.set(otpKey, otpValue.toString(), {
+        expiration: {
+            type: "EX",
+            value: expirationSeconds,
+        },
+    });
+
+    const userRegistrationKey = `user-registration-data:${email}`;
+    const redisUserDataPayload = {
+        name,
+        email,
+        phone,
+        areaId,
+        priorityId,
+        password: hashedPassword,
+    };
+    await redisClient.set(
+        userRegistrationKey,
+        JSON.stringify(redisUserDataPayload),
+        {
+            expiration: {
+                type: "EX",
+                value: expirationSeconds,
+            },
+        },
+    );
+
+    // send email to the use
+    const templatePath = path.join(
+        process.cwd(),
+        "src/app/templates/email-verification.ejs",
+    );
+    const templateData = {
+        name,
+        otp: otpValue,
+        expirationTime: expirationSeconds / 60,
+    };
+    const html = await ejs.renderFile(templatePath, templateData);
+    await transporter.sendMail({
+        from: config.email_sender,
+        to: email,
+        subject: "Email Verification",
+        html,
+    });
+
+};
+
+const verifyUserEmail = async (payload: IVerifyEmailPayload) => {
+    const { email, otp } = payload;
+
+    // 1. Get stored OTP from Redis
+    const otpKey = `email-verification-otp:${email}`;
+
+    const storedOtp = await redisClient.get(otpKey);
+
+    if (!storedOtp) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "OTP is invalid or has expired",
+        );
+    }
+
+    // 2. Compare OTP
+    if (storedOtp !== otp) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Invalid OTP",
+        );
+    }
+
+    // 3. Get temporary registration data
+    const userRegistrationKey = `user-registration-data:${email}`;
+
+    const registrationData = await redisClient.get(userRegistrationKey);
+
+    if (!registrationData) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Registration data is missing or has expired",
+        );
+    }
+
+    const userData = JSON.parse(registrationData);
+
+    // 4. Double-check email is not already registered
+    const existingUser = await prisma.user.findUnique({
+        where: {
+            email,
+        },
+    });
+
+    if (existingUser) {
+        throw new AppError(
+            httpStatus.CONFLICT,
+            "User already exists with this email",
+        );
+    }
+
+    // 5. Create User + CustomerProfile in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+            data: {
+                name: userData.name,
+                email: userData.email,
+                password: userData.password,
+                phone: userData.phone,
+                role: "CUSTOMER",
+                isActive: true,
+            },
+            omit: {
+                password: true
+            }
+        });
+
+        const customerProfile = await tx.customerProfile.create({
+            data: {
+                userId: user.id,
+                areaId: userData.areaId,
+                priorityId: userData.priorityId,
+            },
+        });
+
+        return {
+            user,
+            customerProfile,
+        };
+    });
+
+    // 6. Delete temporary Redis data
+    await redisClient.del(otpKey);
+    await redisClient.del(userRegistrationKey);
+
+    const { user, customerProfile } = result;
+
+    // 7. Return safe response
+    return {
+        user,
+        customerProfile
+    };
+};
+
+// 5. Create User + CustomerProfile together
+// const user = await prisma.$transaction(async (tx) => {
+//     const createdUser = await tx.user.create({
+//         data: {
+//             name,
+//             email,
+//             password: hashedPassword,
+//             phone,
+//             role: "CUSTOMER",
+//         },
+//     });
+
+//     await tx.customerProfile.create({
+//         data: {
+//             userId: createdUser.id,
+//             areaId,
+//             priorityId,
+//         },
+//     });
+
+//     return createdUser;
+// });
+
+// return {
+//     id: user.id,
+//     name: user.name,
+//     email: user.email,
+//     phone: user.phone,
+//     role: user.role,
+// };
+
+export const AuthServices = {
+    registerUser,
+    verifyUserEmail,
+};

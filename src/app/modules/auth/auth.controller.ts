@@ -60,10 +60,21 @@ const getMe = catchAsync(async (req: Request, res: Response) => {
     });
 });
 
+const logoutUser = catchAsync(async (_req: Request, res: Response) => {
+    res.clearCookie("accessToken");
+    res.clearCookie("refreshToken");
+
+    res.status(httpStatus.OK).json({
+        success: true,
+        message: "Logout successful",
+    });
+});
+
 export const AuthController = {
     registerUser,
     verifyUserEmail,
     loginUser,
-    getMe
+    getMe,
+    logoutUser,
 };
 

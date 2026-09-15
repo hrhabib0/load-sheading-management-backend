@@ -39,7 +39,16 @@ const verifyEmailSchema = z.object({
         .regex(/^\d+$/, "OTP must contain only numbers"),
 });
 
+const loginUserSchema = z.object({
+    email: z
+        .string()
+        .email("Please provide a valid email address")
+        .transform((value) => value.toLowerCase()),
+    password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
 export const UserValidation = {
     registerUserSchema,
-    verifyEmailSchema
+    verifyEmailSchema,
+    loginUserSchema,
 };

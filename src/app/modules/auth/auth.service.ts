@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import { AppError } from "../../errors/AppError.js";
 import { prisma } from "../../lib/prisma.js";
-import { IRegisterUserPayload, IVerifyEmailPayload } from "./auth.interface.js";
+import { ILoginUserPayload, IRegisterUserPayload, IVerifyEmailPayload } from "./auth.interface.js";
 import httpStatus from "http-status";
 import config from "../../config/index.js";
 import crypto from "crypto";
@@ -29,26 +29,26 @@ const registerUser = async (payload: IRegisterUserPayload) => {
     }
 
     // 2. Check whether area exists
-    // const area = await prisma.area.findUnique({
-    //     where: {
-    //         id: areaId,
-    //     },
-    // });
+    const area = await prisma.area.findUnique({
+        where: {
+            id: areaId,
+        },
+    });
 
-    // if (!area) {
-    //     throw new AppError(httpStatus.NOT_FOUND, "Area not found");
-    // }
+    if (!area) {
+        throw new AppError(httpStatus.NOT_FOUND, "Area not found");
+    }
 
     // 3. Check whether priority exists
-    // const priority = await prisma.customerPriority.findUnique({
-    //     where: {
-    //         id: priorityId,
-    //     },
-    // });
+    const priority = await prisma.customerPriority.findUnique({
+        where: {
+            id: priorityId,
+        },
+    });
 
-    // if (!priority) {
-    //     throw new AppError(httpStatus.NOT_FOUND, "Customer priority not found");
-    // }
+    if (!priority) {
+        throw new AppError(httpStatus.NOT_FOUND, "Customer priority not found");
+    }
 
     // 4. Hash password
     const hashedPassword = await bcrypt.hash(password, Number(config.bcrypt_salt_rounds));
@@ -198,38 +198,60 @@ const verifyUserEmail = async (payload: IVerifyEmailPayload) => {
     };
 };
 
-// 5. Create User + CustomerProfile together
-// const user = await prisma.$transaction(async (tx) => {
-//     const createdUser = await tx.user.create({
-//         data: {
-//             name,
-//             email,
-//             password: hashedPassword,
-//             phone,
-//             role: "CUSTOMER",
-//         },
-//     });
+const loginUser = async (payload: ILoginUserPayload) => {
+    const { email, password } = payload;
+    // 1. Find user 
+    const user = await prisma.user.findUnique({
+        where: { email },
+    });
+    if (!user) {
+        throw new AppError(httpStatus.NOT_FOUND, "User does not found.");
+    }
 
-//     await tx.customerProfile.create({
-//         data: {
-//             userId: createdUser.id,
-//             areaId,
-//             priorityId,
-//         },
-//     });
+    // 2. Check whether account is active 
+    if (!user.isActive) {
+        throw new AppError(httpStatus.FORBIDDEN, "Your account is inactive",);
+    }
 
-//     return createdUser;
-// });
+    // 3. Compare password
+    const isPasswordMatched = await bcrypt.compare(password, user.password,);
+    if (!isPasswordMatched) {
+        throw new AppError(httpStatus.UNAUTHORIZED, "Invalid email or password",);
+    }
 
-// return {
-//     id: user.id,
-//     name: user.name,
-//     email: user.email,
-//     phone: user.phone,
-//     role: user.role,
-// };
+    // 4. Create access token
+    const jwtPayload = {
+        userId: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+    }
+    const accessToken = jwtUtils.createToken(
+        jwtPayload,
+        config.jwt_access_secret,
+        config.jwt_access_expires_in as SignOptions
+    )
+    // 5. Create refresh token
+    const refreshToken = jwtUtils.createToken(
+        jwtPayload,
+        config.jwt_refresh_secret,
+        config.jwt_refresh_expires_in as SignOptions
+    )
+    return {
+        accessToken,
+        refreshToken,
+        user: {
+            id: user.id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+        },
+    };
+};
 
 export const AuthServices = {
     registerUser,
     verifyUserEmail,
+    loginUser,
 };

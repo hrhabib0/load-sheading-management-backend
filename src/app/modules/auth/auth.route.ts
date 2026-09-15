@@ -9,7 +9,7 @@ const router = Router();
 
 router.post(
     "/register",
-    // validateRequest(UserValidation.registerUserSchema),
+    validateRequest(UserValidation.registerUserSchema),
     AuthController.registerUser
 );
 
@@ -18,6 +18,8 @@ router.post(
     validateRequest(UserValidation.verifyEmailSchema),
     AuthController.verifyUserEmail
 );
+
+router.post("/login", validateRequest(UserValidation.loginUserSchema), AuthController.loginUser,);
 
 
 export const AuthRoutes = router;

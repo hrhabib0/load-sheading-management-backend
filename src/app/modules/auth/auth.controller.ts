@@ -70,11 +70,47 @@ const logoutUser = catchAsync(async (_req: Request, res: Response) => {
     });
 });
 
+const refreshAccessToken = catchAsync(async (req: Request, res: Response) => {
+    // step-1: check refreshToken exist or not in the cookies.
+    const refreshToken = req.cookies.refreshToken;
+
+    // step-2: send the refresh token to service file and recieve new accessToken and refreshToken from the result.
+    const result = await AuthServices.refreshAccessToken(refreshToken);
+    const { accessToken, refreshToken: newRefreshToken } = result;
+
+    // step-3: set tokens in the cookie.
+    res.cookie("accessToken", accessToken, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "none",
+        maxAge: 1000 * 60 * 60 * 24, // 24 hour or 1 day
+    });
+    res.cookie("refreshToken", newRefreshToken, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "none",
+        maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
+    });
+
+    // step-4: send final response
+    sendResponse(res, {
+        statusCode: httpStatus.OK,
+        success: true,
+        message: "New tokens generated successfully",
+        data: {
+            accessToken,
+            refreshToken: newRefreshToken,
+        },
+    });
+});
+
+
 export const AuthController = {
     registerUser,
     verifyUserEmail,
     loginUser,
     getMe,
     logoutUser,
+    refreshAccessToken,
 };
 

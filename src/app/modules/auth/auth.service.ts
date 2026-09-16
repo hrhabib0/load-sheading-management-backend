@@ -10,7 +10,7 @@ import path from "path";
 import ejs from "ejs";
 import { transporter } from "../../lib/nodeMailer.js";
 import { jwtUtils } from "../../utils/jwt.js";
-import { SignOptions } from "jsonwebtoken";
+import { JwtPayload, SignOptions } from "jsonwebtoken";
 
 
 
@@ -276,9 +276,77 @@ const getMe = async (userId: string) => {
     return user;
 };
 
+const refreshAccessToken = async (token: string) => {
+    // step-1: verify refresh token. if not verified then throw an error message
+    if (!token) {
+        throw new AppError(httpStatus.UNAUTHORIZED, "Refresh Token is required.");
+    }
+
+    const verifiedRefreshToken = jwtUtils.verifyToken(token, config.jwt_refresh_secret);
+    if (!verifiedRefreshToken.success || !verifiedRefreshToken.data) {
+        throw new AppError(
+            httpStatus.UNAUTHORIZED,
+            config.node_env === "development"
+                ? verifiedRefreshToken.error
+                : "Invalid refresh token",
+        )
+    }
+
+    // step-2: get data from refresh token
+    const data = verifiedRefreshToken.data as JwtPayload;
+
+    // step-3: find user from DB and check user's status
+    const user = await prisma.user.findUnique({
+        where: {
+            id: data.userId
+        },
+        omit: {
+            password: true
+        }
+    });
+    if (!user) {
+        throw new AppError(
+            httpStatus.NOT_FOUND,
+            "User not found",
+        );
+    }
+    if (!user.isActive) {
+        throw new AppError(
+            httpStatus.FORBIDDEN,
+            "Your account is inactive",
+        );
+    }
+
+    // step-4: create jwtPayload and generate new accessToken, refreshToken.
+    const jwtPayload = {
+        userId: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+    };
+    const accessToken = jwtUtils.createToken(
+        jwtPayload,
+        config.jwt_access_secret,
+        config.jwt_access_expires_in as SignOptions,
+    );
+    const refreshToken = jwtUtils.createToken(
+        jwtPayload,
+        config.jwt_refresh_secret,
+        config.jwt_refresh_expires_in as SignOptions,
+    );
+
+    // step-5: return new accessToken and refreshToken
+    return {
+        accessToken,
+        refreshToken,
+    };
+}
+
+
 export const AuthServices = {
     registerUser,
     verifyUserEmail,
     loginUser,
     getMe,
+    refreshAccessToken,
 };

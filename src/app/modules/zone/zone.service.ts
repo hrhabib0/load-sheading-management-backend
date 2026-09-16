@@ -1,7 +1,7 @@
 import httpStatus from "http-status";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../errors/AppError.js";
-import { ICreateZonePayload, IUpdateZonePayload } from "./zone.interface.js";
+import { ICreateZonePayload, IUpdateZonePayload, IUpdateZoneStatusPayload } from "./zone.interface.js";
 
 
 const createZone = async (payload: ICreateZonePayload) => {
@@ -94,9 +94,32 @@ const updateZone = async (
     return zone;
 };
 
+const updateZoneStatus = async (
+    id: string,
+    payload: IUpdateZoneStatusPayload,
+) => {
+    const existingZone = await prisma.zone.findUnique({
+        where: { id },
+    });
+
+    if (!existingZone) {
+        throw new AppError(httpStatus.NOT_FOUND, "Zone not found");
+    }
+
+    const zone = await prisma.zone.update({
+        where: { id },
+        data: {
+            isActive: payload.isActive,
+        },
+    });
+
+    return zone;
+};
+
 export const ZoneServices = {
     createZone,
     getAllZones,
     getZoneById,
     updateZone,
+    updateZoneStatus,
 };

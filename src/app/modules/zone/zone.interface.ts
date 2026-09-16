@@ -9,3 +9,7 @@ export interface IUpdateZonePayload {
     code?: string;
     description?: string;
 }
+
+export interface IUpdateZoneStatusPayload {
+    isActive: boolean;
+}

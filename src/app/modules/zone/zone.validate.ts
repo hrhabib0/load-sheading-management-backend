@@ -36,7 +36,14 @@ const updateZoneSchema = z.object({
         .optional(),
 });
 
+const updateZoneStatusSchema = z.object({
+    isActive: z.boolean({
+        message: "isActive must be a boolean",
+    }),
+});
+
 export const ZoneValidation = {
     createZoneSchema,
     updateZoneSchema,
+    updateZoneStatusSchema,
 };

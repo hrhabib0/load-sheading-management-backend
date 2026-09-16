@@ -52,9 +52,28 @@ const updateZone = catchAsync(async (req: Request, res: Response) => {
   })
 });
 
+const updateZoneStatus = catchAsync(
+  async (req: Request, res: Response) => {
+    const result = await ZoneServices.updateZoneStatus(
+      req.params.id as string,
+      req.body,
+    );
+
+    sendResponse(res, {
+      success: true,
+      statusCode: httpStatus.OK,
+      message: result.isActive
+        ? "Zone activated successfully"
+        : "Zone deactivated successfully",
+      data: result
+    })
+  },
+);
+
 export const ZoneController = {
   createZone,
   getAllZones,
   getZoneById,
   updateZone,
+  updateZoneStatus,
 };

@@ -23,13 +23,20 @@ router.get(
 
 router.get(
     "/:id",
-    auth("ADMIN"),
+    auth(UserRole.ADMIN),
     ZoneController.getZoneById,
 );
 
 router.patch(
+    "/:id/status",
+    auth(UserRole.ADMIN),
+    validateRequest(ZoneValidation.updateZoneStatusSchema),
+    ZoneController.updateZoneStatus,
+);
+
+router.patch(
     "/:id",
-    auth("ADMIN"),
+    auth(UserRole.ADMIN),
     validateRequest(ZoneValidation.updateZoneSchema),
     ZoneController.updateZone,
 );

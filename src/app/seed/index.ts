@@ -1,10 +1,12 @@
 import { prisma } from "../lib/prisma.js";
+import seedAdmin from "./admin.seed.js";
 import { seedCustomerPriorities } from "./customerPriority.seed.js";
 import { seedInfrastructure } from "./infrustracture.seed.js";
 
 const main = async () => {
     await seedCustomerPriorities();
     await seedInfrastructure();
+    await seedAdmin();
 
     console.log("All seed operations completed successfully.");
 };

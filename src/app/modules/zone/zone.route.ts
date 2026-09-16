@@ -15,5 +15,24 @@ router.post(
     ZoneController.createZone,
 );
 
+router.get(
+    "/",
+    auth(UserRole.ADMIN),
+    ZoneController.getAllZones,
+);
+
+router.get(
+    "/:id",
+    auth("ADMIN"),
+    ZoneController.getZoneById,
+);
+
+router.patch(
+    "/:id",
+    auth("ADMIN"),
+    validateRequest(ZoneValidation.updateZoneSchema),
+    ZoneController.updateZone,
+);
+
 
 export const ZoneRoutes = router;

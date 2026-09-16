@@ -3,7 +3,6 @@ import { prisma } from "../lib/prisma.js";
 import config from "../config/index.js";
 
 const seedAdmin = async () => {
-    console.log("admin seeding.....")
     const email = config.tester_admin_email;
     const password = config.terster_admin_password
     const hashedPassword = await bcrypt.hash(password, Number(config.bcrypt_salt_rounds));

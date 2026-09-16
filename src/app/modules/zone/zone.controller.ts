@@ -16,6 +16,45 @@ const createZone = catchAsync(async (req: Request, res: Response) => {
   })
 });
 
+const getAllZones = catchAsync(async (_req: Request, res: Response) => {
+  const result = await ZoneServices.getAllZones();
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Zones retrieved successfully",
+    data: result
+  })
+});
+
+const getZoneById = catchAsync(async (req: Request, res: Response) => {
+  const result = await ZoneServices.getZoneById(req.params.id as string);
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Zoness retrieved successfully",
+    data: result
+  })
+});
+
+const updateZone = catchAsync(async (req: Request, res: Response) => {
+  const result = await ZoneServices.updateZone(
+    req.params.id as string,
+    req.body,
+  );
+
+  sendResponse(res, {
+    success: true,
+    statusCode: httpStatus.OK,
+    message: "Zone updated successfully",
+    data: result
+  })
+});
+
 export const ZoneController = {
   createZone,
+  getAllZones,
+  getZoneById,
+  updateZone,
 };

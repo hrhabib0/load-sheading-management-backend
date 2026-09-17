@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import { ZoneRoutes } from "./app/modules/zone/zone.route.js";
 import { SubstationRoutes } from "./app/modules/substation/substation.route.js";
 import { FeederRoutes } from "./app/modules/feeder/feeder.route.js";
+import { AreaRoutes } from "./app/modules/area/area.route.js";
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use("/api/auth", AuthRoutes);
 app.use("/api/zones", ZoneRoutes);
 app.use("/api/substations", SubstationRoutes);
 app.use("/api/feeders", FeederRoutes);
+app.use("/api/areas", AreaRoutes);
 
 app.get("/", (_req: Request, res: Response) => {
     res.status(200).json({

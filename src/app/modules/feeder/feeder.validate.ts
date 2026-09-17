@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const createFeederSchema = z.object({
+const createFeederSchema = z.object({
     substationId: z.uuid("Invalid substation ID"),
 
     name: z
@@ -19,7 +19,7 @@ export const createFeederSchema = z.object({
         .optional(),
 });
 
-export const updateFeederSchema = z.object({
+const updateFeederSchema = z.object({
     name: z
         .string()
         .min(2, "Feeder name must be at least 2 characters")
@@ -38,7 +38,7 @@ export const updateFeederSchema = z.object({
         .optional(),
 });
 
-export const updateFeederStatusSchema = z.object({
+const updateFeederStatusSchema = z.object({
     isActive: z.boolean({
         message: "isActive must be a boolean",
     }),

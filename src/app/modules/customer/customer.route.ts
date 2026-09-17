@@ -21,4 +21,36 @@ router.patch(
     CustomerController.updateMyProfile,
 );
 
+// Admin / Zone Manager / Power Operator
+router.get(
+    "/",
+    auth(UserRole.ADMIN, UserRole.ZONE_MANAGER, UserRole.POWER_OPERATOR),
+    CustomerController.getAllCustomers,
+);
+
+router.get(
+    "/:id",
+    auth(UserRole.ADMIN, UserRole.ZONE_MANAGER, UserRole.POWER_OPERATOR),
+    CustomerController.getCustomerById,
+);
+
+
+// Admin / Zone Manager
+router.patch(
+    "/:id",
+    auth(UserRole.ADMIN, UserRole.ZONE_MANAGER),
+    validateRequest(CustomerValidation.updateCustomerByStaffSchema),
+    CustomerController.updateCustomerByStaff,
+);
+
+
+// Admin only
+router.patch(
+    "/:id/status",
+    auth(UserRole.ADMIN),
+    validateRequest(CustomerValidation.updateCustomerStatusSchema),
+    CustomerController.updateCustomerStatus,
+);
+
+
 export const CustomerRoutes = router;

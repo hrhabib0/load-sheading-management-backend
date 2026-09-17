@@ -2,11 +2,17 @@ import { prisma } from "../lib/prisma.js";
 import seedAdmin from "./admin.seed.js";
 import { seedCustomerPriorities } from "./customerPriority.seed.js";
 import { seedInfrastructure } from "./infrustracture.seed.js";
+import seedOperator from "./operator.seed.js";
+import seedPowerOperator from "./powerOperator.seed.js";
+import seedZoneManager from "./zoneManager.seed.js";
 
 const main = async () => {
     await seedCustomerPriorities();
     await seedInfrastructure();
     await seedAdmin();
+    await seedZoneManager();
+    await seedPowerOperator();
+    await seedOperator();
 
     console.log("All seed operations completed successfully.");
 };

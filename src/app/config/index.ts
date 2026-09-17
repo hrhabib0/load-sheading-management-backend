@@ -20,5 +20,11 @@ export default {
     smtp_password: process.env.SMTP_PASSWORD!,
     email_sender: process.env.EMAIL_SENDER!,
     tester_admin_email: process.env.TESTER_ADMIN_EMAIL!,
-    terster_admin_password: process.env.TESTER_ADMIN_PASSWORD!,
+    tester_admin_password: process.env.TESTER_ADMIN_PASSWORD!,
+    tester_zone_manager_email: process.env.TESTER_ZONE_MANAGER_EMAIL!,
+    tester_zone_manager_password: process.env.TESTER_ZONE_MANAGER_PASSWORD!,
+    tester_power_operator_email: process.env.TESTER_POWER_OPERATOR_EMAIL!,
+    tester_power_operator_password: process.env.TESTER_POWER_OPERATOR_PASSWORD!,
+    tester_operator_email: process.env.TESTER_OPERATOR_EMAIL!,
+    tester_operator_password: process.env.TESTER_OPERATOR_PASSWORD!,
 }

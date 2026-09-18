@@ -2,6 +2,7 @@ model LoadSheddingSchedule {
   id          String                     @id @default(uuid())
   title       String
   description String?
+  requiredReduction   Float?
   status      LoadSheddingScheduleStatus @default(DRAFT)
 
   createdBy   String

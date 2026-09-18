@@ -557,9 +557,292 @@ const updateLoadSheddingSchedule = async (
 };
 
 
+const submitLoadSheddingScheduleForApproval = async (
+    scheduleId: string,
+    user: IUserContext,
+) => {
+    const schedule =
+        await prisma.loadSheddingSchedule.findUnique({
+            where: {
+                id: scheduleId,
+            },
+        });
+
+    if (!schedule) {
+        throw new AppError(
+            httpStatus.NOT_FOUND,
+            "Load-shedding schedule not found",
+        );
+    }
+
+    if (schedule.createdBy !== user.userId) {
+        throw new AppError(
+            httpStatus.FORBIDDEN,
+            "Only the schedule creator can submit it for approval",
+        );
+    }
+
+    if (schedule.status !== "DRAFT") {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Only draft schedules can be submitted for approval",
+        );
+    }
+
+    const updatedSchedule =
+        await prisma.loadSheddingSchedule.update({
+            where: {
+                id: scheduleId,
+            },
+            data: {
+                status: LoadSheddingScheduleStatus.PENDING_APPROVAL,
+            },
+        });
+
+    return updatedSchedule;
+};
+
+
+const approveLoadSheddingSchedule = async (
+    scheduleId: string,
+    user: IUserContext,
+) => {
+    const schedule =
+        await prisma.loadSheddingSchedule.findUnique({
+            where: {
+                id: scheduleId,
+            },
+            include: {
+                feeders: {
+                    include: {
+                        feeder: {
+                            select: {
+                                id: true,
+                                substation: {
+                                    select: {
+                                        zoneId: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+    if (!schedule) {
+        throw new AppError(
+            httpStatus.NOT_FOUND,
+            "Load-shedding schedule not found",
+        );
+    }
+
+    if (schedule.status !== LoadSheddingScheduleStatus.PENDING_APPROVAL) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Only schedules pending approval can be approved",
+        );
+    }
+
+    // Creator cannot approve their own schedule.
+    if (schedule.createdBy === user.userId) {
+        throw new AppError(
+            httpStatus.FORBIDDEN,
+            "You cannot approve your own schedule",
+        );
+    }
+
+    // Only Admin and Zone Manager can approve.
+    if (
+        user.role !== UserRole.ADMIN &&
+        user.role !== UserRole.ZONE_MANAGER
+    ) {
+        throw new AppError(
+            httpStatus.FORBIDDEN,
+            "Only Admin or Zone Manager can approve a schedule",
+        );
+    }
+
+    // Admin can approve any schedule.
+    if (user.role === UserRole.ADMIN) {
+        return await prisma.loadSheddingSchedule.update({
+            where: {
+                id: scheduleId,
+            },
+            data: {
+                status: LoadSheddingScheduleStatus.APPROVED,
+                approvedBy: user.userId,
+                approvedAt: new Date(),
+            },
+        });
+    }
+
+    // Zone Manager must belong to the schedule's zone.
+    const zoneIds = [
+        ...new Set(
+            schedule.feeders.map(
+                (item) =>
+                    item.feeder.substation.zoneId,
+            ),
+        ),
+    ];
+
+    const assignments =
+        await prisma.zoneManagerAssignment.findMany({
+            where: {
+                managerId: user.userId,
+                zoneId: {
+                    in: zoneIds,
+                },
+            },
+        });
+
+    if (assignments.length !== zoneIds.length) {
+        throw new AppError(
+            httpStatus.FORBIDDEN,
+            "You are not assigned to this schedule's zone",
+        );
+    }
+
+    const updatedSchedule =
+        await prisma.loadSheddingSchedule.update({
+            where: {
+                id: scheduleId,
+            },
+            data: {
+                status: LoadSheddingScheduleStatus.APPROVED,
+                approvedBy: user.userId,
+                approvedAt: new Date(),
+            },
+        });
+
+    return updatedSchedule;
+};
+
+
+const publishLoadSheddingSchedule = async (
+    scheduleId: string,
+    user: IUserContext,
+) => {
+    const schedule =
+        await prisma.loadSheddingSchedule.findUnique({
+            where: {
+                id: scheduleId,
+            },
+            include: {
+                feeders: {
+                    include: {
+                        feeder: {
+                            select: {
+                                id: true,
+                                substation: {
+                                    select: {
+                                        zoneId: true,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        });
+
+    if (!schedule) {
+        throw new AppError(
+            httpStatus.NOT_FOUND,
+            "Load-shedding schedule not found",
+        );
+    }
+
+    if (schedule.status !== LoadSheddingScheduleStatus.APPROVED) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Only approved schedules can be published",
+        );
+    }
+
+    if (
+        user.role !== UserRole.ADMIN &&
+        user.role !== UserRole.ZONE_MANAGER &&
+        user.role !== UserRole.POWER_OPERATOR
+    ) {
+        throw new AppError(
+            httpStatus.FORBIDDEN,
+            "You are not authorized to publish this schedule",
+        );
+    }
+
+    // The user must have access to the schedule's Zone.
+    if (user.role !== UserRole.ADMIN) {
+        const zoneIds = [
+            ...new Set(
+                schedule.feeders.map(
+                    (item) =>
+                        item.feeder.substation.zoneId,
+                ),
+            ),
+        ];
+
+        if (user.role === UserRole.ZONE_MANAGER) {
+            const assignments =
+                await prisma.zoneManagerAssignment.findMany({
+                    where: {
+                        managerId: user.userId,
+                        zoneId: {
+                            in: zoneIds,
+                        },
+                    },
+                });
+
+            if (assignments.length !== zoneIds.length) {
+                throw new AppError(
+                    httpStatus.FORBIDDEN,
+                    "You are not assigned to this schedule's zone",
+                );
+            }
+        }
+
+        if (user.role === UserRole.POWER_OPERATOR) {
+            const assignments =
+                await prisma.operatorZoneAssignment.findMany({
+                    where: {
+                        operatorId: user.userId,
+                        zoneId: {
+                            in: zoneIds,
+                        },
+                    },
+                });
+
+            if (assignments.length !== zoneIds.length) {
+                throw new AppError(
+                    httpStatus.FORBIDDEN,
+                    "You are not assigned to this schedule's zone",
+                );
+            }
+        }
+    }
+
+    const updatedSchedule =
+        await prisma.loadSheddingSchedule.update({
+            where: {
+                id: scheduleId,
+            },
+            data: {
+                status: "PUBLISHED",
+                publishedAt: new Date(),
+            },
+        });
+
+    return updatedSchedule;
+};
+
+
 export const LoadSheddingServices = {
     createLoadSheddingSchedule,
     getAllLoadSheddingSchedules,
     getLoadSheddingScheduleById,
     updateLoadSheddingSchedule,
+    submitLoadSheddingScheduleForApproval,
+    approveLoadSheddingSchedule,
+    publishLoadSheddingSchedule,
 };

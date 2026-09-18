@@ -38,4 +38,23 @@ router.patch(
     LoadSheddingController.updateLoadSheddingSchedule,
 );
 
+
+router.patch(
+    "/schedules/:id/submit",
+    auth(UserRole.ADMIN, UserRole.ZONE_MANAGER, UserRole.POWER_OPERATOR),
+    LoadSheddingController.submitLoadSheddingScheduleForApproval,
+);
+
+router.patch(
+    "/schedules/:id/approve",
+    auth(UserRole.ADMIN, UserRole.ZONE_MANAGER),
+    LoadSheddingController.approveLoadSheddingSchedule,
+);
+
+router.patch(
+    "/schedules/:id/publish",
+    auth(UserRole.ADMIN, UserRole.ZONE_MANAGER, UserRole.POWER_OPERATOR),
+    LoadSheddingController.publishLoadSheddingSchedule,
+);
+
 export const LoadSheddingRoutes = router;

@@ -77,9 +77,69 @@ const updateLoadSheddingSchedule = catchAsync(
     },
 );
 
+const submitLoadSheddingScheduleForApproval = catchAsync(
+    async (req: Request, res: Response) => {
+        const schedulesId = req.params.id as string;
+        const user = req.user!;
+
+        const result = await LoadSheddingServices.submitLoadSheddingScheduleForApproval(
+            schedulesId,
+            user,
+        );
+
+        sendResponse(res, {
+            success: true,
+            statusCode: httpStatus.OK,
+            message: "Load-shedding schedule submitted for approval successfully",
+            data: result,
+        });
+    },
+);
+
+const approveLoadSheddingSchedule = catchAsync(
+    async (req: Request, res: Response) => {
+        const schedulesId = req.params.id as string;
+        const user = req.user!;
+
+        const result = await LoadSheddingServices.approveLoadSheddingSchedule(
+            schedulesId,
+            user,
+        );
+
+        sendResponse(res, {
+            success: true,
+            statusCode: httpStatus.OK,
+            message: "Load-shedding schedule approved successfully",
+            data: result,
+        });
+    },
+);
+
+const publishLoadSheddingSchedule = catchAsync(
+    async (req: Request, res: Response) => {
+        const schedulesId = req.params.id as string;
+        const user = req.user!;
+
+        const result = await LoadSheddingServices.publishLoadSheddingSchedule(
+            schedulesId,
+            user,
+        );
+
+        sendResponse(res, {
+            success: true,
+            statusCode: httpStatus.OK,
+            message: "Load-shedding schedule published successfully",
+            data: result,
+        });
+    },
+);
+
 export const LoadSheddingController = {
     createLoadSheddingSchedule,
     getAllLoadSheddingSchedules,
     getLoadSheddingScheduleById,
     updateLoadSheddingSchedule,
+    submitLoadSheddingScheduleForApproval,
+    approveLoadSheddingSchedule,
+    publishLoadSheddingSchedule,
 };

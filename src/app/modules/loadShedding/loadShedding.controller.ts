@@ -134,6 +134,44 @@ const publishLoadSheddingSchedule = catchAsync(
     },
 );
 
+const startLoadSheddingSchedule = catchAsync(
+    async (req: Request, res: Response) => {
+        const schedulesId = req.params.id as string;
+        const user = req.user!;
+
+        const result = await LoadSheddingServices.startLoadSheddingSchedule(
+            schedulesId,
+            user,
+        );
+
+        sendResponse(res, {
+            success: true,
+            statusCode: httpStatus.OK,
+            message: "Load-shedding started successfully",
+            data: result,
+        });
+    },
+);
+
+const completeLoadSheddingSchedule = catchAsync(
+    async (req: Request, res: Response) => {
+        const schedulesId = req.params.id as string;
+        const user = req.user!;
+
+        const result = await LoadSheddingServices.completeLoadSheddingSchedule(
+            schedulesId,
+            user,
+        );
+
+        sendResponse(res, {
+            success: true,
+            statusCode: httpStatus.OK,
+            message: "Load-shedding completed successfully",
+            data: result,
+        });
+    },
+);
+
 export const LoadSheddingController = {
     createLoadSheddingSchedule,
     getAllLoadSheddingSchedules,
@@ -142,4 +180,6 @@ export const LoadSheddingController = {
     submitLoadSheddingScheduleForApproval,
     approveLoadSheddingSchedule,
     publishLoadSheddingSchedule,
+    startLoadSheddingSchedule,
+    completeLoadSheddingSchedule,
 };

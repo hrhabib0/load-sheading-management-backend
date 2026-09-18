@@ -57,4 +57,16 @@ router.patch(
     LoadSheddingController.publishLoadSheddingSchedule,
 );
 
+router.patch(
+    "/:id/start",
+    auth(UserRole.ADMIN, UserRole.ZONE_MANAGER, UserRole.POWER_OPERATOR),
+    LoadSheddingController.startLoadSheddingSchedule,
+);
+
+router.patch(
+    "/:id/complete",
+    auth(UserRole.ADMIN, UserRole.ZONE_MANAGER, UserRole.POWER_OPERATOR),
+    LoadSheddingController.completeLoadSheddingSchedule,
+);
+
 export const LoadSheddingRoutes = router;

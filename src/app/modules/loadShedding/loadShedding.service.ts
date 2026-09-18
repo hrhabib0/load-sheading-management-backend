@@ -837,6 +837,214 @@ const publishLoadSheddingSchedule = async (
 };
 
 
+const startLoadSheddingSchedule = async (
+    scheduleId: string,
+    user: IUserContext,
+) => {
+    const schedule = await prisma.loadSheddingSchedule.findUnique({
+        where: {
+            id: scheduleId,
+        },
+        include: {
+            feeders: {
+                include: {
+                    feeder: {
+                        select: {
+                            id: true,
+                            substation: {
+                                select: {
+                                    zoneId: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    if (!schedule) {
+        throw new AppError(
+            httpStatus.NOT_FOUND,
+            "Load-shedding schedule not found",
+        );
+    }
+
+    if (schedule.status !== LoadSheddingScheduleStatus.PUBLISHED) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Only published schedules can be started",
+        );
+    }
+
+    // Admin can manage every zone.
+    if (user.role !== UserRole.ADMIN) {
+        const zoneIds = [
+            ...new Set(
+                schedule.feeders.map(
+                    (item) =>
+                        item.feeder.substation.zoneId,
+                ),
+            ),
+        ];
+
+        if (user.role === UserRole.ZONE_MANAGER) {
+            const assignments =
+                await prisma.zoneManagerAssignment.findMany({
+                    where: {
+                        managerId: user.userId,
+                        zoneId: {
+                            in: zoneIds,
+                        },
+                    },
+                });
+
+            if (assignments.length !== zoneIds.length) {
+                throw new AppError(
+                    httpStatus.FORBIDDEN,
+                    "You are not assigned to this schedule's zone",
+                );
+            }
+        }
+
+        if (user.role === UserRole.POWER_OPERATOR) {
+            const assignments =
+                await prisma.operatorZoneAssignment.findMany({
+                    where: {
+                        operatorId: user.userId,
+                        zoneId: {
+                            in: zoneIds,
+                        },
+                    },
+                });
+
+            if (assignments.length !== zoneIds.length) {
+                throw new AppError(
+                    httpStatus.FORBIDDEN,
+                    "You are not assigned to this schedule's zone",
+                );
+            }
+        }
+    }
+
+    const updatedSchedule = await prisma.loadSheddingSchedule.update({
+        where: {
+            id: scheduleId,
+        },
+        data: {
+            status: LoadSheddingScheduleStatus.IN_PROGRESS,
+            actualStartAt: new Date(),
+        },
+    });
+
+    return updatedSchedule;
+};
+
+
+const completeLoadSheddingSchedule = async (
+    scheduleId: string,
+    user: IUserContext,
+) => {
+    const schedule = await prisma.loadSheddingSchedule.findUnique({
+        where: {
+            id: scheduleId,
+        },
+        include: {
+            feeders: {
+                include: {
+                    feeder: {
+                        select: {
+                            id: true,
+                            substation: {
+                                select: {
+                                    zoneId: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    if (!schedule) {
+        throw new AppError(
+            httpStatus.NOT_FOUND,
+            "Load-shedding schedule not found",
+        );
+    }
+
+    if (schedule.status !== LoadSheddingScheduleStatus.IN_PROGRESS) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Only in-progress schedules can be completed",
+        );
+    }
+
+    // Admin can manage every zone.
+    if (user.role !== UserRole.ADMIN) {
+        const zoneIds = [
+            ...new Set(
+                schedule.feeders.map(
+                    (item) =>
+                        item.feeder.substation.zoneId,
+                ),
+            ),
+        ];
+
+        if (user.role === "ZONE_MANAGER") {
+            const assignments =
+                await prisma.zoneManagerAssignment.findMany({
+                    where: {
+                        managerId: user.userId,
+                        zoneId: {
+                            in: zoneIds,
+                        },
+                    },
+                });
+
+            if (assignments.length !== zoneIds.length) {
+                throw new AppError(
+                    httpStatus.FORBIDDEN,
+                    "You are not assigned to this schedule's zone",
+                );
+            }
+        }
+
+        if (user.role === UserRole.POWER_OPERATOR) {
+            const assignments =
+                await prisma.operatorZoneAssignment.findMany({
+                    where: {
+                        operatorId: user.userId,
+                        zoneId: {
+                            in: zoneIds,
+                        },
+                    },
+                });
+
+            if (assignments.length !== zoneIds.length) {
+                throw new AppError(
+                    httpStatus.FORBIDDEN,
+                    "You are not assigned to this schedule's zone",
+                );
+            }
+        }
+    }
+
+    const updatedSchedule = await prisma.loadSheddingSchedule.update({
+        where: {
+            id: scheduleId,
+        },
+        data: {
+            status: LoadSheddingScheduleStatus.COMPLETED,
+            actualEndAt: new Date(),
+        },
+    });
+
+    return updatedSchedule;
+};
+
+
 export const LoadSheddingServices = {
     createLoadSheddingSchedule,
     getAllLoadSheddingSchedules,
@@ -845,4 +1053,6 @@ export const LoadSheddingServices = {
     submitLoadSheddingScheduleForApproval,
     approveLoadSheddingSchedule,
     publishLoadSheddingSchedule,
+    startLoadSheddingSchedule,
+    completeLoadSheddingSchedule,
 };

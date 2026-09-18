@@ -9,6 +9,7 @@ import { SubstationRoutes } from "./app/modules/substation/substation.route.js";
 import { FeederRoutes } from "./app/modules/feeder/feeder.route.js";
 import { AreaRoutes } from "./app/modules/area/area.route.js";
 import { CustomerRoutes } from "./app/modules/customer/customer.route.js";
+import { powerOperatorRoutes } from "./app/modules/powerOperator/powerOperator.route.js";
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use("/api/substations", SubstationRoutes);
 app.use("/api/feeders", FeederRoutes);
 app.use("/api/areas", AreaRoutes);
 app.use("/api/customers", CustomerRoutes);
+app.use("/api/power-operators", powerOperatorRoutes);
 
 app.get("/", (_req: Request, res: Response) => {
     res.status(200).json({

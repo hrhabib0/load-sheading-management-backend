@@ -1045,6 +1045,118 @@ const completeLoadSheddingSchedule = async (
 };
 
 
+const cancelLoadSheddingSchedule = async (
+    scheduleId: string,
+    user: IUserContext,
+) => {
+    const schedule = await prisma.loadSheddingSchedule.findUnique({
+        where: {
+            id: scheduleId,
+        },
+        include: {
+            feeders: {
+                include: {
+                    feeder: {
+                        select: {
+                            id: true,
+                            substation: {
+                                select: {
+                                    zoneId: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    if (!schedule) {
+        throw new AppError(
+            httpStatus.NOT_FOUND,
+            "Load-shedding schedule not found",
+        );
+    }
+
+    const cancellableStatuses = [
+        "DRAFT",
+        "PENDING_APPROVAL",
+        "APPROVED",
+        "PUBLISHED",
+    ];
+
+    if (!cancellableStatuses.includes(schedule.status)) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            `Schedule with status ${schedule.status} cannot be cancelled`,
+        );
+    }
+
+    // Admin can cancel any schedule.
+    if (user.role !== UserRole.ADMIN) {
+        const zoneIds = [
+            ...new Set(
+                schedule.feeders.map(
+                    (item) =>
+                        item.feeder.substation.zoneId,
+                ),
+            ),
+        ];
+
+        if (user.role === UserRole.ZONE_MANAGER) {
+            const assignments =
+                await prisma.zoneManagerAssignment.findMany({
+                    where: {
+                        managerId: user.userId,
+                        zoneId: {
+                            in: zoneIds,
+                        },
+                    },
+                });
+
+            if (assignments.length !== zoneIds.length) {
+                throw new AppError(
+                    httpStatus.FORBIDDEN,
+                    "You are not assigned to this schedule's zone",
+                );
+            }
+        }
+
+        if (user.role === UserRole.POWER_OPERATOR) {
+            const assignments =
+                await prisma.operatorZoneAssignment.findMany({
+                    where: {
+                        operatorId: user.userId,
+                        zoneId: {
+                            in: zoneIds,
+                        },
+                    },
+                });
+
+            if (assignments.length !== zoneIds.length) {
+                throw new AppError(
+                    httpStatus.FORBIDDEN,
+                    "You are not assigned to this schedule's zone",
+                );
+            }
+        }
+    }
+
+    const updatedSchedule =
+        await prisma.loadSheddingSchedule.update({
+            where: {
+                id: scheduleId,
+            },
+            data: {
+                status: LoadSheddingScheduleStatus.CANCELLED,
+                cancelledAt: new Date(),
+            },
+        });
+
+    return updatedSchedule;
+};
+
+
 export const LoadSheddingServices = {
     createLoadSheddingSchedule,
     getAllLoadSheddingSchedules,
@@ -1055,4 +1167,5 @@ export const LoadSheddingServices = {
     publishLoadSheddingSchedule,
     startLoadSheddingSchedule,
     completeLoadSheddingSchedule,
+    cancelLoadSheddingSchedule,
 };

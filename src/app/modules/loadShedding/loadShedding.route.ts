@@ -69,4 +69,10 @@ router.patch(
     LoadSheddingController.completeLoadSheddingSchedule,
 );
 
+router.patch(
+    "/:id/cancel",
+    auth(UserRole.ADMIN, UserRole.ZONE_MANAGER, UserRole.POWER_OPERATOR),
+    LoadSheddingController.cancelLoadSheddingSchedule,
+);
+
 export const LoadSheddingRoutes = router;

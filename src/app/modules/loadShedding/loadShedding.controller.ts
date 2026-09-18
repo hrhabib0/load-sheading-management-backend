@@ -172,6 +172,25 @@ const completeLoadSheddingSchedule = catchAsync(
     },
 );
 
+const cancelLoadSheddingSchedule = catchAsync(
+    async (req: Request, res: Response) => {
+        const schedulesId = req.params.id as string;
+        const user = req.user!;
+
+        const result = await LoadSheddingServices.cancelLoadSheddingSchedule(
+            schedulesId,
+            user,
+        );
+
+        sendResponse(res, {
+            success: true,
+            statusCode: httpStatus.OK,
+            message: "Load-shedding schedule cancelled successfully",
+            data: result,
+        });
+    },
+);
+
 export const LoadSheddingController = {
     createLoadSheddingSchedule,
     getAllLoadSheddingSchedules,
@@ -182,4 +201,5 @@ export const LoadSheddingController = {
     publishLoadSheddingSchedule,
     startLoadSheddingSchedule,
     completeLoadSheddingSchedule,
+    cancelLoadSheddingSchedule,
 };

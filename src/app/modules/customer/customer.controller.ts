@@ -115,11 +115,29 @@ const updateCustomerStatus = catchAsync(
     },
 );
 
+const getMyLoadSheddingSchedules = catchAsync(
+    async (req: Request, res: Response) => {
+        const user = req.user!;
+
+        const result = await CustomerServices.getMyLoadSheddingSchedules(
+            user.userId,
+        );
+
+        sendResponse(res, {
+            success: true,
+            statusCode: httpStatus.OK,
+            message: "Your load-shedding schedules retrieved successfully",
+            data: result,
+        });
+    },
+);
+
 export const CustomerController = {
     getMyProfile,
     updateMyProfile,
     getAllCustomers,
     getCustomerById,
     updateCustomerByStaff,
-    updateCustomerStatus
+    updateCustomerStatus,
+    getMyLoadSheddingSchedules,
 };

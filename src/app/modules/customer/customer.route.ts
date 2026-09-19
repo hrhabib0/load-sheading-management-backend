@@ -21,6 +21,12 @@ router.patch(
     CustomerController.updateMyProfile,
 );
 
+router.get(
+    "/me/load-shedding-schedules",
+    auth(UserRole.CUSTOMER),
+    CustomerController.getMyLoadSheddingSchedules,
+);
+
 // Admin / Zone Manager / Power Operator
 router.get(
     "/",

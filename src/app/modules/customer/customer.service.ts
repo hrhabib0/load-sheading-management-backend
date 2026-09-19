@@ -1,4 +1,4 @@
-import { UserRole } from "../../../generated/prisma/enums.js";
+import { LoadSheddingScheduleStatus, UserRole } from "../../../generated/prisma/enums.js";
 import { AppError } from "../../errors/AppError.js";
 import { prisma } from "../../lib/prisma.js";
 import { IUpdateCustomerByStaffPayload, IUpdateCustomerPayload, IUpdateCustomerStatusPayload } from "./customer.interface.js";
@@ -134,7 +134,7 @@ const updateMyProfile = async (
 };
 
 const getAllCustomers = async (user: IUserContext) => {
-    
+
     const customers = await prisma.user.findMany({
         where: {
             role: UserRole.CUSTOMER,
@@ -527,6 +527,79 @@ const updateCustomerStatus = async (
     return updatedCustomer;
 };
 
+
+const getMyLoadSheddingSchedules = async (
+    userId: string,
+) => {
+    const customer = await prisma.customerProfile.findUnique({
+        where: {
+            userId,
+        },
+        select: {
+            areaId: true,
+        },
+    });
+
+    if (!customer) {
+        throw new AppError(
+            httpStatus.NOT_FOUND,
+            "Customer profile not found",
+        );
+    }
+
+    const schedules = await prisma.loadSheddingSchedule.findMany({
+        where: {
+            status: {
+                in: [
+                    LoadSheddingScheduleStatus.PUBLISHED,
+                    LoadSheddingScheduleStatus.IN_PROGRESS,
+                ],
+            },
+
+            feeders: {
+                some: {
+                    feeder: {
+                        areas: {
+                            some: {
+                                id: customer.areaId,
+                            },
+                        },
+                    },
+                },
+            },
+        },
+
+        orderBy: {
+            scheduledStartAt: "asc",
+        },
+
+        select: {
+            id: true,
+            title: true,
+            description: true,
+            status: true,
+            scheduledStartAt: true,
+            scheduledEndAt: true,
+            actualStartAt: true,
+            actualEndAt: true,
+
+            feeders: {
+                select: {
+                    feeder: {
+                        select: {
+                            id: true,
+                            name: true,
+                            code: true,
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    return schedules;
+};
+
 export const CustomerServices = {
     getMyProfile,
     updateMyProfile,
@@ -534,4 +607,5 @@ export const CustomerServices = {
     getCustomerById,
     updateCustomerByStaff,
     updateCustomerStatus,
+    getMyLoadSheddingSchedules,
 };

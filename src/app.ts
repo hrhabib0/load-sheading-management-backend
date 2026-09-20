@@ -12,6 +12,7 @@ import { CustomerRoutes } from "./app/modules/customer/customer.route.js";
 import { powerOperatorRoutes } from "./app/modules/powerOperator/powerOperator.route.js";
 import { LoadSheddingRoutes } from "./app/modules/loadShedding/loadShedding.route.js";
 import { NotificationRoutes } from "./app/modules/notification/notification.route.js";
+import { PlannedOutageRoutes } from "./app/modules/plannedOutage/plannedOutage.route.js";
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use("/api/customers", CustomerRoutes);
 app.use("/api/power-operators", powerOperatorRoutes);
 app.use("/api/load-shedding", LoadSheddingRoutes);
 app.use("/api/notifications", NotificationRoutes)
+app.use("/api/planned-outages", PlannedOutageRoutes);
 
 app.get("/", (_req: Request, res: Response) => {
     res.status(200).json({

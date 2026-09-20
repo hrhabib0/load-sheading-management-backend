@@ -3,6 +3,7 @@ import { AppError } from "../../errors/AppError.js";
 import { LoadSheddingScheduleStatus, UserRole } from "../../../generated/prisma/enums.js";
 import httpStatus from "http-status";
 import { ICreateLoadSheddingSchedulePayload, IUpdateLoadSheddingSchedulePayload } from "./loadShedding.interface.js";
+import { NotificationServices } from "../notification/notification.service.js";
 
 
 interface IUserContext {
@@ -724,28 +725,27 @@ const publishLoadSheddingSchedule = async (
     scheduleId: string,
     user: IUserContext,
 ) => {
-    const schedule =
-        await prisma.loadSheddingSchedule.findUnique({
-            where: {
-                id: scheduleId,
-            },
-            include: {
-                feeders: {
-                    include: {
-                        feeder: {
-                            select: {
-                                id: true,
-                                substation: {
-                                    select: {
-                                        zoneId: true,
-                                    },
+    const schedule = await prisma.loadSheddingSchedule.findUnique({
+        where: {
+            id: scheduleId,
+        },
+        include: {
+            feeders: {
+                include: {
+                    feeder: {
+                        select: {
+                            id: true,
+                            substation: {
+                                select: {
+                                    zoneId: true,
                                 },
                             },
                         },
                     },
                 },
             },
-        });
+        },
+    });
 
     if (!schedule) {
         throw new AppError(
@@ -822,16 +822,66 @@ const publishLoadSheddingSchedule = async (
         }
     }
 
-    const updatedSchedule =
-        await prisma.loadSheddingSchedule.update({
-            where: {
-                id: scheduleId,
+    const updatedSchedule = await prisma.loadSheddingSchedule.update({
+        where: {
+            id: scheduleId,
+        },
+        data: {
+            status: LoadSheddingScheduleStatus.PUBLISHED,
+            publishedAt: new Date(),
+        },
+        include: {
+            feeders: {
+                include: {
+                    feeder: {
+                        select: {
+                            id: true,
+                            areas: {
+                                select: {
+                                    id: true,
+                                },
+                            },
+                        },
+                    },
+                },
             },
-            data: {
-                status: "PUBLISHED",
-                publishedAt: new Date(),
+        },
+    });
+
+    const areaIds = [
+        ...new Set(
+            updatedSchedule.feeders.flatMap(
+                (item) => item.feeder.areas.map(
+                    (area) => area.id,
+                ),
+            ),
+        ),
+    ];
+    const customers = await prisma.customerProfile.findMany({
+        where: {
+            areaId: {
+                in: areaIds,
             },
-        });
+        },
+        select: {
+            userId: true,
+        },
+    });
+
+    await Promise.all(
+        customers.map((customer) =>
+            NotificationServices.createNotification({
+                userId: customer.userId,
+                type: "LOAD_SHEDDING_PUBLISHED",
+                title: updatedSchedule.title,
+                message:
+                    `Load shedding is scheduled from ` +
+                    `${updatedSchedule.scheduledStartAt.toISOString()} ` +
+                    `to ` +
+                    `${updatedSchedule.scheduledEndAt.toISOString()}.`,
+            }),
+        ),
+    );
 
     return updatedSchedule;
 };

@@ -13,3 +13,7 @@ export interface IUpdatePlannedOutagePayload {
     scheduledEndAt?: Date;
     feederIds?: string[];
 }
+
+export interface ICancelPlannedOutagePayload {
+    cancellationReason: string;
+}

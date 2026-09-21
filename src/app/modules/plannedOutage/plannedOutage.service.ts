@@ -1,6 +1,6 @@
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../errors/AppError.js";
-import { ICreatePlannedOutagePayload, IUpdatePlannedOutagePayload } from "./plannedOutage.interface.js";
+import { ICancelPlannedOutagePayload, ICreatePlannedOutagePayload, IUpdatePlannedOutagePayload } from "./plannedOutage.interface.js";
 import httpStatus from "http-status";
 import { PlannedOutageStatus, UserRole } from "../../../generated/prisma/enums.js";
 import { Prisma } from "../../../generated/prisma/client.js";
@@ -666,10 +666,801 @@ const updatePlannedOutage = async (
     return updatedOutage;
 };
 
+const submitPlannedOutageForApproval = async (
+    plannedOutageId: string,
+    user: IUserContext,
+) => {
+    const plannedOutage = await prisma.plannedOutage.findUnique({
+        where: {
+            id: plannedOutageId,
+        },
+        include: {
+            feeders: {
+                select: {
+                    feederId: true,
+                },
+            },
+        },
+    });
+
+    if (!plannedOutage) {
+        throw new AppError(
+            httpStatus.NOT_FOUND,
+            "Planned outage not found",
+        );
+    }
+
+    if (plannedOutage.status !== "DRAFT") {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Only draft planned outages can be submitted for approval",
+        );
+    }
+
+    // The creator can only submit their own outage.
+    if (plannedOutage.createdBy !== user.userId) {
+        throw new AppError(
+            httpStatus.FORBIDDEN,
+            "Only the creator can submit this planned outage for approval",
+        );
+    }
+
+    if (plannedOutage.feeders.length === 0) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "At least one feeder is required before submitting for approval",
+        );
+    }
+
+    const updatedOutage = await prisma.plannedOutage.update({
+        where: {
+            id: plannedOutageId,
+        },
+        data: {
+            status: PlannedOutageStatus.PENDING_APPROVAL,
+        },
+    });
+
+    return updatedOutage;
+};
+
+const approvePlannedOutage = async (
+    plannedOutageId: string,
+    user: IUserContext,
+) => {
+    const plannedOutage = await prisma.plannedOutage.findUnique({
+        where: {
+            id: plannedOutageId,
+        },
+        include: {
+            feeders: {
+                select: {
+                    feeder: {
+                        select: {
+                            substation: {
+                                select: {
+                                    zoneId: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    if (!plannedOutage) {
+        throw new AppError(
+            httpStatus.NOT_FOUND,
+            "Planned outage not found",
+        );
+    }
+
+    if (
+        plannedOutage.status !==
+        PlannedOutageStatus.PENDING_APPROVAL
+    ) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Only planned outages pending approval can be approved",
+        );
+    }
+
+    // Creator cannot approve their own outage
+    if (
+        plannedOutage.createdBy === user.userId
+    ) {
+        throw new AppError(
+            httpStatus.FORBIDDEN,
+            "The creator cannot approve their own planned outage",
+        );
+    }
+
+    const zoneIds = [
+        ...new Set(
+            plannedOutage.feeders.map(
+                (item) =>
+                    item.feeder.substation.zoneId,
+            ),
+        ),
+    ];
+
+    /*
+     * ADMIN can approve any planned outage.
+     */
+
+    /*
+     * ZONE_MANAGER must belong to
+     * one of the affected zones.
+     */
+    if (user.role === UserRole.ZONE_MANAGER) {
+        const assignment = await prisma.zoneManagerAssignment.findFirst({
+            where: {
+                managerId: user.userId,
+                zoneId: {
+                    in: zoneIds,
+                },
+            },
+        });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not assigned to any zone affected by this planned outage",
+            );
+        }
+    }
+
+    /*
+     * POWER_OPERATOR must belong to
+     * one of the affected zones.
+     */
+    if (user.role === UserRole.POWER_OPERATOR) {
+        const assignment = await prisma.operatorZoneAssignment.findFirst({
+            where: {
+                operatorId: user.userId,
+                zoneId: {
+                    in: zoneIds,
+                },
+            },
+        });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not assigned to any zone affected by this planned outage",
+            );
+        }
+    }
+
+    const approvedOutage = await prisma.plannedOutage.update({
+        where: {
+            id: plannedOutageId,
+        },
+        data: {
+            status: PlannedOutageStatus.APPROVED,
+            approvedBy: user.userId,
+            approvedAt: new Date(),
+        },
+    });
+
+    return approvedOutage;
+};
+
+const publishPlannedOutage = async (
+    plannedOutageId: string,
+    user: IUserContext,
+) => {
+    const plannedOutage = await prisma.plannedOutage.findUnique({
+        where: {
+            id: plannedOutageId,
+        },
+        include: {
+            feeders: {
+                select: {
+                    feederId: true,
+                },
+            },
+        },
+    });
+
+    if (!plannedOutage) {
+        throw new AppError(
+            httpStatus.NOT_FOUND,
+            "Planned outage not found",
+        );
+    }
+
+    // Only APPROVED outages can be published
+    if (plannedOutage.status !== PlannedOutageStatus.APPROVED) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Only approved planned outages can be published",
+        );
+    }
+
+    if (plannedOutage.feeders.length === 0) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "A planned outage must have at least one feeder",
+        );
+    }
+
+    const feederIds = plannedOutage.feeders.map(
+        (item) => item.feederId,
+    );
+
+    /*
+     * Find the zones affected by this outage.
+     */
+    const feeders = await prisma.feeder.findMany({
+        where: {
+            id: {
+                in: feederIds,
+            },
+        },
+        select: {
+            id: true,
+            substation: {
+                select: {
+                    zoneId: true,
+                },
+            },
+        },
+    });
+
+    const zoneIds = [
+        ...new Set(
+            feeders.map(
+                (feeder) =>
+                    feeder.substation.zoneId,
+            ),
+        ),
+    ];
+
+    /*
+     * Authorization
+     */
+
+    // ADMIN can publish any approved outage.
+
+    // ZONE_MANAGER
+    if (user.role === UserRole.ZONE_MANAGER) {
+        const assignment = await prisma.zoneManagerAssignment.findFirst({
+            where: {
+                managerId: user.userId,
+                zoneId: {
+                    in: zoneIds,
+                },
+            },
+        });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not assigned to any zone affected by this planned outage",
+            );
+        }
+    }
+
+    // POWER_OPERATOR
+    if (user.role === UserRole.POWER_OPERATOR) {
+        const assignment = await prisma.operatorZoneAssignment.findFirst({
+            where: {
+                operatorId: user.userId,
+                zoneId: {
+                    in: zoneIds,
+                },
+            },
+        });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not assigned to any zone affected by this planned outage",
+            );
+        }
+    }
+
+    /*
+     * Find customers affected by the selected feeders.
+     */
+    const customers = await prisma.customerProfile.findMany({
+        where: {
+            area: {
+                feederId: {
+                    in: feederIds,
+                },
+            },
+        },
+        select: {
+            userId: true,
+            area: {
+                select: {
+                    name: true,
+                },
+            },
+        },
+    });
+
+    /*
+     * Publish outage + create notifications
+     * in one transaction.
+     */
+    const result = await prisma.$transaction(
+        async (tx) => {
+            const publishedOutage = await tx.plannedOutage.update({
+                where: {
+                    id: plannedOutageId,
+                },
+                data: {
+                    status: PlannedOutageStatus.PUBLISHED,
+                    publishedAt: new Date(),
+                },
+            });
+
+            if (customers.length > 0) {
+                await tx.notification.createMany({
+                    data: customers.map(
+                        (customer) => ({
+                            userId: customer.userId,
+                            title: "Planned Power Outage",
+                            message:
+                                `A planned power outage has been scheduled for your area (${customer.area.name}). ` +
+                                `Scheduled from ${plannedOutage.scheduledStartAt.toISOString()} ` +
+                                `to ${plannedOutage.scheduledEndAt.toISOString()}.`,
+                            type:
+                                "PLANNED_OUTAGE_PUBLISHED",
+                        }),
+                    ),
+                });
+            }
+
+            return publishedOutage;
+        },
+    );
+
+    return result;
+};
+
+const startPlannedOutage = async (
+    plannedOutageId: string,
+    user: IUserContext,
+) => {
+    const plannedOutage = await prisma.plannedOutage.findUnique({
+        where: {
+            id: plannedOutageId,
+        },
+        include: {
+            feeders: {
+                select: {
+                    feeder: {
+                        select: {
+                            substation: {
+                                select: {
+                                    zoneId: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    if (!plannedOutage) {
+        throw new AppError(
+            httpStatus.NOT_FOUND,
+            "Planned outage not found",
+        );
+    }
+
+    if (plannedOutage.status !== PlannedOutageStatus.PUBLISHED) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Only published planned outages can be started",
+        );
+    }
+
+    const zoneIds = [
+        ...new Set(
+            plannedOutage.feeders.map(
+                (item) =>
+                    item.feeder.substation.zoneId,
+            ),
+        ),
+    ];
+
+    /*
+     * ADMIN can start any planned outage.
+     */
+
+    /*
+     * ZONE_MANAGER
+     */
+    if (user.role === UserRole.ZONE_MANAGER) {
+        const assignment =
+            await prisma.zoneManagerAssignment.findFirst({
+                where: {
+                    managerId: user.userId,
+                    zoneId: {
+                        in: zoneIds,
+                    },
+                },
+            });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not assigned to any zone affected by this planned outage",
+            );
+        }
+    }
+
+    /*
+     * POWER_OPERATOR
+     */
+    if (user.role === UserRole.POWER_OPERATOR) {
+        const assignment = await prisma.operatorZoneAssignment.findFirst({
+            where: {
+                operatorId: user.userId,
+                zoneId: {
+                    in: zoneIds,
+                },
+            },
+        });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not assigned to any zone affected by this planned outage",
+            );
+        }
+    }
+
+    const startedOutage = await prisma.plannedOutage.update({
+        where: {
+            id: plannedOutageId,
+        },
+        data: {
+            status: PlannedOutageStatus.IN_PROGRESS,
+            actualStartAt: new Date(),
+        },
+    });
+
+    return startedOutage;
+};
+
+const completePlannedOutage = async (
+    plannedOutageId: string,
+    user: IUserContext,
+) => {
+    const plannedOutage = await prisma.plannedOutage.findUnique({
+        where: {
+            id: plannedOutageId,
+        },
+        include: {
+            feeders: {
+                include: {
+                    feeder: {
+                        include: {
+                            substation: true,
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    if (!plannedOutage) {
+        throw new AppError(httpStatus.NOT_FOUND, "Planned outage not found");
+    }
+
+    if (plannedOutage.status !== "IN_PROGRESS") {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Only an in-progress planned outage can be completed",
+        );
+    }
+
+    // ADMIN can complete any planned outage
+
+    const zoneIds = [
+        ...new Set(
+            plannedOutage.feeders.map(
+                (item) => item.feeder.substation.zoneId,
+            ),
+        ),
+    ];
+
+    if (user.role === UserRole.ZONE_MANAGER) {
+        const assignment = await prisma.zoneManagerAssignment.findFirst({
+            where: {
+                managerId: user.userId,
+                zoneId: {
+                    in: zoneIds,
+                },
+            },
+        });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not authorized to complete this planned outage",
+            );
+        }
+    }
+
+    if (user.role === UserRole.POWER_OPERATOR) {
+        const assignment = await prisma.operatorZoneAssignment.findFirst({
+            where: {
+                operatorId: user.userId,
+                zoneId: {
+                    in: zoneIds,
+                },
+            },
+        });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not authorized to complete this planned outage",
+            );
+        }
+    }
+
+    const completedPlannedOutage = await prisma.plannedOutage.update({
+        where: {
+            id: plannedOutageId,
+        },
+        data: {
+            status: PlannedOutageStatus.COMPLETED,
+            actualEndAt: new Date(),
+        },
+        include: {
+            feeders: {
+                include: {
+                    feeder: true,
+                },
+            },
+        },
+    });
+
+    return completedPlannedOutage;
+};
+
+const rejectPlannedOutage = async (
+    plannedOutageId: string,
+    user: IUserContext,
+) => {
+    const plannedOutage = await prisma.plannedOutage.findUnique({
+        where: {
+            id: plannedOutageId,
+        },
+        include: {
+            feeders: {
+                select: {
+                    feeder: {
+                        select: {
+                            substation: {
+                                select: {
+                                    zoneId: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    if (!plannedOutage) {
+        throw new AppError(
+            httpStatus.NOT_FOUND,
+            "Planned outage not found",
+        );
+    }
+
+    if (
+        plannedOutage.status !==
+        PlannedOutageStatus.PENDING_APPROVAL
+    ) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Only planned outages pending approval can be rejected",
+        );
+    }
+
+    // Creator cannot reject their own outage.
+    if (plannedOutage.createdBy === user.userId) {
+        throw new AppError(
+            httpStatus.FORBIDDEN,
+            "The creator cannot reject their own planned outage",
+        );
+    }
+
+    const zoneIds = [
+        ...new Set(
+            plannedOutage.feeders.map(
+                (item) =>
+                    item.feeder.substation.zoneId,
+            ),
+        ),
+    ];
+
+    // ZONE_MANAGER
+    if (user.role === UserRole.ZONE_MANAGER) {
+        const assignment = await prisma.zoneManagerAssignment.findFirst({
+            where: {
+                managerId: user.userId,
+                zoneId: {
+                    in: zoneIds,
+                },
+            },
+        });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not assigned to any zone affected by this planned outage",
+            );
+        }
+    }
+
+    // POWER_OPERATOR
+    if (user.role === UserRole.POWER_OPERATOR) {
+        const assignment = await prisma.operatorZoneAssignment.findFirst({
+            where: {
+                operatorId: user.userId,
+                zoneId: {
+                    in: zoneIds,
+                },
+            },
+        });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not assigned to any zone affected by this planned outage",
+            );
+        }
+    }
+
+    const rejectedOutage = await prisma.plannedOutage.update({
+        where: {
+            id: plannedOutageId,
+        },
+        data: {
+            status: PlannedOutageStatus.REJECTED,
+        },
+    });
+
+    return rejectedOutage;
+};
+
+const cancelPlannedOutage = async (
+    plannedOutageId: string,
+    payload: ICancelPlannedOutagePayload,
+    user: IUserContext,
+) => {
+    const plannedOutage = await prisma.plannedOutage.findUnique({
+        where: {
+            id: plannedOutageId,
+        },
+        include: {
+            feeders: {
+                select: {
+                    feeder: {
+                        select: {
+                            substation: {
+                                select: {
+                                    zoneId: true,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    if (!plannedOutage) {
+        throw new AppError(
+            httpStatus.NOT_FOUND,
+            "Planned outage not found",
+        );
+    }
+
+    const cancellableStatuses = [
+        "DRAFT",
+        "PENDING_APPROVAL",
+        "APPROVED",
+        "PUBLISHED",
+    ];
+
+    if (
+        !cancellableStatuses.includes(
+            plannedOutage.status,
+        )
+    ) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            `Planned outage cannot be cancelled from ${plannedOutage.status} status`,
+        );
+    }
+
+    const zoneIds = [
+        ...new Set(
+            plannedOutage.feeders.map(
+                (item) =>
+                    item.feeder.substation.zoneId,
+            ),
+        ),
+    ];
+
+    // ZONE_MANAGER
+    if (user.role === UserRole.ZONE_MANAGER) {
+        const assignment = await prisma.zoneManagerAssignment.findFirst({
+            where: {
+                managerId: user.userId,
+                zoneId: {
+                    in: zoneIds,
+                },
+            },
+        });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not assigned to any zone affected by this planned outage",
+            );
+        }
+    }
+
+    // POWER_OPERATOR
+    if (user.role === UserRole.POWER_OPERATOR) {
+        const assignment = await prisma.operatorZoneAssignment.findFirst({
+            where: {
+                operatorId: user.userId,
+                zoneId: {
+                    in: zoneIds,
+                },
+            },
+        });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not assigned to any zone affected by this planned outage",
+            );
+        }
+    }
+
+    const cancelledOutage = await prisma.plannedOutage.update({
+        where: {
+            id: plannedOutageId,
+        },
+        data: {
+            status: PlannedOutageStatus.CANCELLED,
+            cancelledAt: new Date(),
+            cancellationReason: payload.cancellationReason,
+        },
+    });
+
+    return cancelledOutage;
+};
+
 
 export const PlannedOutageServices = {
     createPlannedOutage,
     getAllPlannedOutages,
     getPlannedOutageById,
     updatePlannedOutage,
+    submitPlannedOutageForApproval,
+    approvePlannedOutage,
+    publishPlannedOutage,
+    startPlannedOutage,
+    completePlannedOutage,
+    rejectPlannedOutage,
+    cancelPlannedOutage,
 };

@@ -30,4 +30,46 @@ router.patch(
     PlannedOutageController.updatePlannedOutage,
 );
 
+router.patch(
+    "/:id/submit",
+    auth(UserRole.ADMIN, UserRole.ZONE_MANAGER, UserRole.POWER_OPERATOR),
+    PlannedOutageController.submitPlannedOutageForApproval,
+);
+
+router.patch(
+    "/:id/approve",
+    auth(UserRole.ADMIN, UserRole.ZONE_MANAGER, UserRole.POWER_OPERATOR),
+    PlannedOutageController.approvePlannedOutage,
+);
+
+router.patch(
+    "/:id/publish",
+    auth(UserRole.ADMIN, UserRole.ZONE_MANAGER, UserRole.POWER_OPERATOR),
+    PlannedOutageController.publishPlannedOutage,
+);
+
+router.patch(
+    "/:id/start",
+    auth(UserRole.ADMIN, UserRole.ZONE_MANAGER, UserRole.POWER_OPERATOR),
+    PlannedOutageController.startPlannedOutage,
+);
+
+router.patch(
+    "/:id/complete",
+    auth(UserRole.ADMIN, UserRole.ZONE_MANAGER, UserRole.POWER_OPERATOR),
+    PlannedOutageController.completePlannedOutage,
+);
+
+router.patch(
+    "/:id/reject",
+    auth(UserRole.ADMIN, UserRole.ZONE_MANAGER, UserRole.POWER_OPERATOR),
+    PlannedOutageController.rejectPlannedOutage,
+);
+
+router.patch(
+    "/:id/cancel",
+    auth(UserRole.ADMIN, UserRole.ZONE_MANAGER, UserRole.POWER_OPERATOR),
+    PlannedOutageController.cancelPlannedOutage,
+);
+
 export const PlannedOutageRoutes = router;

@@ -1,3 +1,5 @@
+import { UserRole } from "../../../generated/prisma/enums.js";
+
 export interface IRegisterUserPayload {
     name: string;
     email: string;
@@ -15,4 +17,11 @@ export interface IVerifyEmailPayload {
 export interface ILoginUserPayload {
     email: string;
     password: string;
+}
+
+export interface IUserContext {
+    email: string;
+    name: string;
+    userId: string;
+    role: UserRole;
 }

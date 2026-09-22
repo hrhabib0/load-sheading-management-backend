@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { auth } from "../../middleware/checkAuth.js";
 import { validateRequest } from "../../middleware/validateRequest.js";
-import { createCustomerReportSchema } from "./customerReport.validate.js";
+import { CustomerReportValidation } from "./customerReport.validate.js";
 import { CustomerReportController } from "./customerReport.controller.js";
 import { UserRole } from "../../../generated/prisma/enums.js";
 
@@ -12,7 +12,7 @@ const router = Router();
 router.post(
     "/create-report",
     auth(UserRole.CUSTOMER),
-    validateRequest(createCustomerReportSchema),
+    validateRequest(CustomerReportValidation.createCustomerReportSchema),
     CustomerReportController.createCustomerReport,
 );
 

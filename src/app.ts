@@ -15,6 +15,7 @@ import { NotificationRoutes } from "./app/modules/notification/notification.rout
 import { PlannedOutageRoutes } from "./app/modules/plannedOutage/plannedOutage.route.js";
 import { CustomerReportRoutes } from "./app/modules/customerReport/customerReport.route.js";
 import { OutageIncidentRoutes } from "./app/modules/outageIncident/outageIncident.route.js";
+import { WorkTaskRoutes } from "./app/modules/workTask/workTask.route.js";
 
 const app = express();
 
@@ -36,6 +37,7 @@ app.use("/api/notifications", NotificationRoutes)
 app.use("/api/planned-outages", PlannedOutageRoutes);
 app.use("/api/customer-reports", CustomerReportRoutes);
 app.use("/api/outage-incidents", OutageIncidentRoutes);
+app.use("/api/work-tasks", WorkTaskRoutes);
 
 app.get("/", (_req: Request, res: Response) => {
     res.status(200).json({

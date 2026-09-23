@@ -27,4 +27,6 @@ export default {
     tester_power_operator_password: process.env.TESTER_POWER_OPERATOR_PASSWORD!,
     tester_operator_email: process.env.TESTER_OPERATOR_EMAIL!,
     tester_operator_password: process.env.TESTER_OPERATOR_PASSWORD!,
+    tester_technician_email: process.env.TESTER_TECHNICIAN_EMAIL!,
+    tester_technician_password: process.env.TESTER_TECHNICIAN_PASSWORD!,
 }

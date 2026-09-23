@@ -4,6 +4,7 @@ import { seedCustomerPriorities } from "./customerPriority.seed.js";
 import { seedInfrastructure } from "./infrustracture.seed.js";
 import seedOperator from "./operator.seed.js";
 import seedPowerOperator from "./powerOperator.seed.js";
+import seedTechnician from "./technician.seed.js";
 import seedZoneManager from "./zoneManager.seed.js";
 
 const main = async () => {
@@ -13,6 +14,7 @@ const main = async () => {
     await seedZoneManager();
     await seedPowerOperator();
     await seedOperator();
+    await seedTechnician();
 
     console.log("All seed operations completed successfully.");
 };

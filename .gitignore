@@ -21,3 +21,4 @@ package-lock.json
 skills-lock.json
 pnpm-workspace.yaml
 .vscode
+.vercel

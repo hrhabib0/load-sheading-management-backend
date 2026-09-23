@@ -7,6 +7,7 @@ export default {
     node_env: process.env.NODE_ENV || "development",
     port: process.env.PORT || 5000,
     database_url: process.env.DATABASE_URL,
+    frontend_url: process.env.FRONTEND_URL,
     jwt_access_secret: process.env.JWT_ACCESS_SECRET!,
     jwt_refresh_secret: process.env.JWT_REFRESH_SECRET!,
     jwt_access_expires_in: process.env.JWT_ACCESS_EXPIRES_IN || "1d",
@@ -29,4 +30,10 @@ export default {
     tester_operator_password: process.env.TESTER_OPERATOR_PASSWORD!,
     tester_technician_email: process.env.TESTER_TECHNICIAN_EMAIL!,
     tester_technician_password: process.env.TESTER_TECHNICIAN_PASSWORD!,
+    bkash_base_url: process.env.BKASH_BASE_URL!,
+    bkash_username: process.env.BKASH_USERNAME!,
+    bkash_password: process.env.BKASH_PASSWORD!,
+    bkash_app_key: process.env.BKASH_APP_KEY!,
+    bkash_app_secret: process.env.BKASH_APP_SECRET!,
+    bkash_callback_url: process.env.BKASH_CALLBACK_URL!,
 }

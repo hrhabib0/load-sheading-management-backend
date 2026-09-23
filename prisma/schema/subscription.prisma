@@ -1,0 +1,26 @@
+enum SubscriptionStatus {
+    ACTIVE
+    EXPIRED
+    CANCELLED
+}
+
+model CustomerSubscription {
+    id String @id @default(uuid())
+
+    customerId String          @unique
+    customer   CustomerProfile @relation(fields: [customerId], references: [id])
+
+    status SubscriptionStatus @default(ACTIVE)
+
+    startedAt DateTime
+    expiresAt DateTime
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    payments Payment[]
+
+    @@index([status])
+    @@index([expiresAt])
+    @@map("customer_subscriptions")
+}

@@ -13,7 +13,9 @@ model CustomerProfile {
   priorityId String
   priority   CustomerPriority @relation(fields: [priorityId], references: [id])
 
-  reports CustomerReport[]
+  reports      CustomerReport[]
+  subscription CustomerSubscription?
+  payments     Payment[]
 
   @@index([areaId])
   @@index([priorityId])

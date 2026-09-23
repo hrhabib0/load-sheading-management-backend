@@ -1,0 +1,39 @@
+enum PaymentStatus {
+    INITIATED
+    PENDING
+    PAID
+    FAILED
+    CANCELLED
+}
+
+enum PaymentProvider {
+    BKASH
+}
+
+model Payment {
+    id String @id @default(uuid())
+
+    customerId String
+    customer   CustomerProfile @relation(fields: [customerId], references: [id])
+
+    subscriptionId String?
+    subscription   CustomerSubscription? @relation(fields: [subscriptionId], references: [id])
+
+    provider PaymentProvider @default(BKASH)
+    status   PaymentStatus   @default(INITIATED)
+
+    amount Decimal @db.Decimal(10, 2)
+
+    transactionId String? @unique
+    paymentId     String? @unique
+
+    createdAt DateTime  @default(now())
+    paidAt    DateTime?
+    updatedAt DateTime  @updatedAt
+
+    @@index([customerId])
+    @@index([subscriptionId])
+    @@index([status])
+    @@index([provider])
+    @@map("payments")
+}

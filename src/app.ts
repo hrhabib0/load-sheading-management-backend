@@ -16,6 +16,7 @@ import { PlannedOutageRoutes } from "./app/modules/plannedOutage/plannedOutage.r
 import { CustomerReportRoutes } from "./app/modules/customerReport/customerReport.route.js";
 import { OutageIncidentRoutes } from "./app/modules/outageIncident/outageIncident.route.js";
 import { WorkTaskRoutes } from "./app/modules/workTask/workTask.route.js";
+import { PaymentRoutes } from "./app/modules/payment/payment.route.js";
 
 const app = express();
 
@@ -38,6 +39,8 @@ app.use("/api/planned-outages", PlannedOutageRoutes);
 app.use("/api/customer-reports", CustomerReportRoutes);
 app.use("/api/outage-incidents", OutageIncidentRoutes);
 app.use("/api/work-tasks", WorkTaskRoutes);
+
+app.use("/api/payments", PaymentRoutes);
 
 app.get("/", (_req: Request, res: Response) => {
     res.status(200).json({

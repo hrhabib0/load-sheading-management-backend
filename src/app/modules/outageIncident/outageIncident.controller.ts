@@ -86,9 +86,94 @@ const linkCustomerReport = catchAsync(
     },
 );
 
+const startRepair = catchAsync(
+    async (req: Request, res: Response) => {
+        const incidentId = req.params.id as string;
+        const user = req.user!;
+
+        const result = await OutageIncidentServices.startRepair(
+            incidentId,
+            user,
+        );
+
+        sendResponse(res, {
+            success: true,
+            statusCode: httpStatus.OK,
+            message: "Outage incident moved to repairing",
+            data: result,
+        });
+    },
+);
+
+
+const markRestorationPending = catchAsync(
+    async (req: Request, res: Response) => {
+        const incidentId = req.params.id as string;
+        const user = req.user!;
+
+        const result = await OutageIncidentServices.markRestorationPending(
+            incidentId,
+            user,
+        );
+
+        sendResponse(res, {
+            success: true,
+            statusCode: httpStatus.OK,
+            message: "Outage incident marked as restoration pending",
+            data: result,
+        });
+    },
+);
+
+
+const verifyRestoration = catchAsync(
+    async (req: Request, res: Response) => {
+        const incidentId = req.params.id as string;
+        const user = req.user!;
+
+        const result = await OutageIncidentServices.verifyRestoration(
+            incidentId,
+            user,
+        );
+
+        sendResponse(res, {
+            success: true,
+            statusCode: httpStatus.OK,
+            message: "Outage restoration verified successfully",
+            data: result,
+        });
+    },
+);
+
+
+const closeIncident = catchAsync(
+    async (req: Request, res: Response) => {
+        const incidentId = req.params.id as string;
+        const payload = req.body;
+        const user = req.user!;
+
+        const result = await OutageIncidentServices.closeIncident(
+            incidentId,
+            payload,
+            user,
+        );
+
+        sendResponse(res, {
+            success: true,
+            statusCode: httpStatus.OK,
+            message: "Outage incident closed successfully",
+            data: result,
+        });
+    },
+);
+
 export const OutageIncidentController = {
     createOutageIncident,
     getAllOutageIncidents,
     getOutageIncidentById,
     linkCustomerReport,
+    startRepair,
+    markRestorationPending,
+    verifyRestoration,
+    closeIncident,
 };

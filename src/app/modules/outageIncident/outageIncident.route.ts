@@ -29,6 +29,47 @@ router.patch(
     OutageIncidentController.linkCustomerReport,
 );
 
+router.patch(
+    "/:id/start-repair",
+    auth(
+        UserRole.ADMIN,
+        UserRole.POWER_OPERATOR,
+        UserRole.ZONE_MANAGER,
+    ),
+    OutageIncidentController.startRepair,
+);
+
+router.patch(
+    "/:id/restoration-pending",
+    auth(
+        UserRole.ADMIN,
+        UserRole.POWER_OPERATOR,
+        UserRole.ZONE_MANAGER,
+    ),
+    OutageIncidentController.markRestorationPending,
+);
+
+router.patch(
+    "/:id/verify-restoration",
+    auth(
+        UserRole.ADMIN,
+        UserRole.POWER_OPERATOR,
+        UserRole.ZONE_MANAGER,
+    ),
+    OutageIncidentController.verifyRestoration,
+);
+
+router.patch(
+    "/:id/close",
+    auth(
+        UserRole.ADMIN,
+        UserRole.POWER_OPERATOR,
+        UserRole.ZONE_MANAGER,
+    ),
+    validateRequest(OutageIncidentValidation.closeOutageIncidentSchema),
+    OutageIncidentController.closeIncident,
+);
+
 router.get(
     "/:id",
     auth(UserRole.ADMIN, UserRole.ZONE_MANAGER, UserRole.POWER_OPERATOR),

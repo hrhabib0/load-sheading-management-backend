@@ -24,7 +24,22 @@ const linkCustomerReportSchema = z.object({
 })
 
 
+const closeOutageIncidentSchema = z.object({
+    resolutionNote: z
+        .string()
+        .min(
+            5,
+            "Resolution note must be at least 5 characters",
+        )
+        .max(
+            1000,
+            "Resolution note cannot exceed 1000 characters",
+        ),
+})
+
+
 export const OutageIncidentValidation = {
     createOutageIncidentSchema,
     linkCustomerReportSchema,
+    closeOutageIncidentSchema,
 }

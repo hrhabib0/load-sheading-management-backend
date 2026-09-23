@@ -2,8 +2,8 @@ import httpStatus from "http-status";
 import { prisma } from "../../lib/prisma.js";
 import { AppError } from "../../errors/AppError.js";
 import { IUserContext } from "../auth/auth.interface.js";
-import { ICreateOutageIncidentPayload } from "./outageIncident.interface.js";
-import { CustomerReportStatus, OutageIncidentStatus, UserRole } from "../../../generated/prisma/enums.js";
+import { ICloseOutageIncidentPayload, ICreateOutageIncidentPayload } from "./outageIncident.interface.js";
+import { CustomerReportStatus, OutageIncidentStatus, UserRole, WorkTaskStatus } from "../../../generated/prisma/enums.js";
 import { Prisma } from "../../../generated/prisma/client.js";
 
 
@@ -513,6 +513,399 @@ const linkCustomerReport = async (
     return result;
 };
 
+const startRepair = async (
+    incidentId: string,
+    user: IUserContext,
+) => {
+    const incident = await prisma.outageIncident.findUnique({
+        where: {
+            id: incidentId,
+        },
+        select: {
+            id: true,
+            status: true,
+            feeder: {
+                select: {
+                    substation: {
+                        select: {
+                            zoneId: true,
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    if (!incident) {
+        throw new AppError(
+            httpStatus.NOT_FOUND,
+            "Outage incident not found",
+        );
+    }
+
+    if (
+        incident.status !==
+        OutageIncidentStatus.INVESTIGATING
+    ) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Only investigating incidents can be moved to repairing",
+        );
+    }
+
+    const zoneId = incident.feeder.substation.zoneId;
+
+    if (user.role === UserRole.ZONE_MANAGER) {
+        const assignment = await prisma.zoneManagerAssignment.findFirst({
+            where: {
+                managerId: user.userId,
+                zoneId,
+            },
+        });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not authorized to manage this incident",
+            );
+        }
+    }
+
+    if (user.role === UserRole.POWER_OPERATOR) {
+        const assignment = await prisma.operatorZoneAssignment.findFirst({
+            where: {
+                operatorId: user.userId,
+                zoneId,
+            },
+        });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not authorized to manage this incident",
+            );
+        }
+    }
+
+    const updatedIncident = await prisma.outageIncident.update({
+        where: {
+            id: incidentId,
+        },
+        data: {
+            status: OutageIncidentStatus.REPAIRING,
+        },
+    });
+
+    return updatedIncident;
+};
+
+const markRestorationPending = async (
+    incidentId: string,
+    user: IUserContext,
+) => {
+    const incident = await prisma.outageIncident.findUnique({
+        where: {
+            id: incidentId,
+        },
+        select: {
+            id: true,
+            status: true,
+
+            feeder: {
+                select: {
+                    substation: {
+                        select: {
+                            zoneId: true,
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    if (!incident) {
+        throw new AppError(
+            httpStatus.NOT_FOUND,
+            "Outage incident not found",
+        );
+    }
+
+    if (
+        incident.status !==
+        OutageIncidentStatus.REPAIRING
+    ) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Only repairing incidents can be marked as restoration pending",
+        );
+    }
+
+    const zoneId = incident.feeder.substation.zoneId;
+
+    if (user.role === UserRole.ZONE_MANAGER) {
+        const assignment = await prisma.zoneManagerAssignment.findFirst({
+            where: {
+                managerId: user.userId,
+                zoneId,
+            },
+        });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not authorized to manage this incident",
+            );
+        }
+    }
+
+    if (user.role === UserRole.POWER_OPERATOR) {
+        const assignment = await prisma.operatorZoneAssignment.findFirst({
+            where: {
+                operatorId: user.userId,
+                zoneId,
+            },
+        });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not authorized to manage this incident",
+            );
+        }
+    }
+
+    /*
+     * Check unfinished tasks.
+     */
+
+    const unfinishedTask = await prisma.workTask.findFirst({
+        where: {
+            incidentId,
+            status: {
+                in: [
+                    WorkTaskStatus.PENDING,
+                    WorkTaskStatus.ASSIGNED,
+                    WorkTaskStatus.ACCEPTED,
+                    WorkTaskStatus.IN_PROGRESS,
+                ],
+            },
+        },
+        select: {
+            id: true,
+            status: true,
+        },
+    });
+
+    if (unfinishedTask) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "All work tasks must be completed or resolved before restoration",
+        );
+    }
+
+    const updatedIncident = await prisma.outageIncident.update({
+        where: {
+            id: incidentId,
+        },
+        data: {
+            status: OutageIncidentStatus.RESTORATION_PENDING,
+        },
+    });
+
+    return updatedIncident;
+};
+
+const verifyRestoration = async (
+    incidentId: string,
+    user: IUserContext,
+) => {
+    const incident = await prisma.outageIncident.findUnique({
+        where: {
+            id: incidentId,
+        },
+        select: {
+            id: true,
+            status: true,
+
+            feeder: {
+                select: {
+                    substation: {
+                        select: {
+                            zoneId: true,
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    if (!incident) {
+        throw new AppError(
+            httpStatus.NOT_FOUND,
+            "Outage incident not found",
+        );
+    }
+
+    if (
+        incident.status !==
+        OutageIncidentStatus.RESTORATION_PENDING
+    ) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Only restoration-pending incidents can be verified",
+        );
+    }
+
+    const zoneId = incident.feeder.substation.zoneId;
+
+    if (user.role === UserRole.ZONE_MANAGER) {
+        const assignment = await prisma.zoneManagerAssignment.findFirst({
+            where: {
+                managerId: user.userId,
+                zoneId,
+            },
+        });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not authorized to verify this incident",
+            );
+        }
+    }
+
+    if (user.role === UserRole.POWER_OPERATOR) {
+        const assignment = await prisma.operatorZoneAssignment.findFirst({
+            where: {
+                operatorId: user.userId,
+                zoneId,
+            },
+        });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not authorized to verify this incident",
+            );
+        }
+    }
+
+    const updatedIncident = await prisma.outageIncident.update({
+        where: {
+            id: incidentId,
+        },
+        data: {
+            status: OutageIncidentStatus.RESTORED,
+            restoredAt: new Date(),
+            verifiedAt: new Date(),
+            verifiedBy: user.userId,
+        },
+
+        include: {
+            verifier: {
+                select: {
+                    id: true,
+                    name: true,
+                    email: true,
+                    role: true,
+                },
+            },
+        },
+    });
+
+    return updatedIncident;
+};
+
+const closeIncident = async (
+    incidentId: string,
+    payload: ICloseOutageIncidentPayload,
+    user: IUserContext,
+) => {
+    const incident = await prisma.outageIncident.findUnique({
+        where: {
+            id: incidentId,
+        },
+        select: {
+            id: true,
+            status: true,
+
+            feeder: {
+                select: {
+                    substation: {
+                        select: {
+                            zoneId: true,
+                        },
+                    },
+                },
+            },
+        },
+    });
+
+    if (!incident) {
+        throw new AppError(
+            httpStatus.NOT_FOUND,
+            "Outage incident not found",
+        );
+    }
+
+    if (
+        incident.status !==
+        OutageIncidentStatus.RESTORED
+    ) {
+        throw new AppError(
+            httpStatus.BAD_REQUEST,
+            "Only restored incidents can be closed",
+        );
+    }
+
+    const zoneId = incident.feeder.substation.zoneId;
+
+    if (user.role === UserRole.ZONE_MANAGER) {
+        const assignment = await prisma.zoneManagerAssignment.findFirst({
+            where: {
+                managerId: user.userId,
+                zoneId,
+            },
+        });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not authorized to close this incident",
+            );
+        }
+    }
+
+    if (user.role === UserRole.POWER_OPERATOR) {
+        const assignment = await prisma.operatorZoneAssignment.findFirst({
+            where: {
+                operatorId: user.userId,
+                zoneId,
+            },
+        });
+
+        if (!assignment) {
+            throw new AppError(
+                httpStatus.FORBIDDEN,
+                "You are not authorized to close this incident",
+            );
+        }
+    }
+
+    const updatedIncident = await prisma.outageIncident.update({
+        where: {
+            id: incidentId,
+        },
+        data: {
+            status: OutageIncidentStatus.CLOSED,
+            closedAt: new Date(),
+            resolutionNote: payload.resolutionNote,
+        },
+    });
+
+    return updatedIncident;
+};
+
 
 
 export const OutageIncidentServices = {
@@ -520,4 +913,8 @@ export const OutageIncidentServices = {
     getAllOutageIncidents,
     getOutageIncidentById,
     linkCustomerReport,
+    startRepair,
+    markRestorationPending,
+    verifyRestoration,
+    closeIncident,
 };

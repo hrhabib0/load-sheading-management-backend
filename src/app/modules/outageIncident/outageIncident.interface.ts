@@ -6,3 +6,7 @@ export interface ICreateOutageIncidentPayload {
 export interface ILinkCustomerReportPayload {
     reportId: string;
 }
+
+export interface ICloseOutageIncidentPayload {
+    resolutionNote: string;
+}

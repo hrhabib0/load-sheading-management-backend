@@ -28,7 +28,6 @@ const createPayment = catchAsync(
 
 const bkashCallback = catchAsync(
     async (req: Request, res: Response) => {
-        console.log("handle is oke", req.query)
         const paymentID = String(req.query.paymentID);
         const status = req.query.status
             ? String(req.query.status)
@@ -38,7 +37,6 @@ const bkashCallback = catchAsync(
             paymentID,
             status,
         );
-        console.log(redirectUrl, "result url is ok")
         res.redirect(redirectUrl);
     },
 );

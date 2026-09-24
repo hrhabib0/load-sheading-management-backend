@@ -359,8 +359,7 @@ export const createBkashPayment = async (
     );
 
 
-    const result =
-        await parseBkashResponse(response);
+    const result = await parseBkashResponse(response);
 
 
     if (!response.ok) {

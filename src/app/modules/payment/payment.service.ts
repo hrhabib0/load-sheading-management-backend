@@ -89,7 +89,7 @@ const createPayment = async (
             intent: "sale",
             currency: "BDT",
             merchantInvoiceNumber: payment.id,
-            callbackURL: config.bkash_callback_url,
+            callbackURL: `http://localhost:5000/api/payments/bkash/callback`,
         });
 
         /*

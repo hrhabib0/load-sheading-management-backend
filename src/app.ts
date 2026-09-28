@@ -17,10 +17,14 @@ import { CustomerReportRoutes } from "./app/modules/customerReport/customerRepor
 import { OutageIncidentRoutes } from "./app/modules/outageIncident/outageIncident.route.js";
 import { WorkTaskRoutes } from "./app/modules/workTask/workTask.route.js";
 import { PaymentRoutes } from "./app/modules/payment/payment.route.js";
+import config from "./app/config/index.js";
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+    origin: config.frontend_url,
+    credentials: true
+}));
 app.use(express.json());
 app.use(cookieParser());
 

@@ -30,10 +30,10 @@ export const auth = (...requiredRoles: UserRole[]) => {
                 req.headers.authorization.split(" "[1])
                 :
                 req.headers.authorization;
-
         if (!token) {
             throw new AppError(httpStatus.UNAUTHORIZED, "You are not logged in.")
         }
+
 
         // verify token
         const verifiedToken = jwtUtils.verifyToken(token, config.jwt_access_secret);

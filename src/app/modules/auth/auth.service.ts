@@ -15,7 +15,7 @@ import { JwtPayload, SignOptions } from "jsonwebtoken";
 
 
 const registerUser = async (payload: IRegisterUserPayload) => {
-    const { name, email, password, phone, areaId, priorityId } = payload;
+    const { name, email, password, phone, areaId } = payload;
 
     // 1. Check whether email already exists
     const existingUser = await prisma.user.findUnique({
@@ -40,14 +40,26 @@ const registerUser = async (payload: IRegisterUserPayload) => {
     }
 
     // 3. Check whether priority exists
-    const priority = await prisma.customerPriority.findUnique({
+    // const priority = await prisma.customerPriority.findUnique({
+    //     where: {
+    //         id: priorityId,
+    //     },
+    // });
+
+    // if (!priority) {
+    //     throw new AppError(httpStatus.NOT_FOUND, "Customer priority not found");
+    // }
+    const defaultCustomerPriority = await prisma.customerPriority.findFirst({
         where: {
-            id: priorityId,
+            level: 4,
         },
     });
 
-    if (!priority) {
-        throw new AppError(httpStatus.NOT_FOUND, "Customer priority not found");
+    if (!defaultCustomerPriority) {
+        throw new AppError(
+            httpStatus.INTERNAL_SERVER_ERROR,
+            "Default customer priority is not configured"
+        );
     }
 
     // 4. Hash password
@@ -70,7 +82,7 @@ const registerUser = async (payload: IRegisterUserPayload) => {
         email,
         phone,
         areaId,
-        priorityId,
+        priorityId: defaultCustomerPriority.id,
         password: hashedPassword,
     };
     await redisClient.set(

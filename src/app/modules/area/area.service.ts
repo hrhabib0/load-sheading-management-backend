@@ -364,10 +364,16 @@ const updateAreaStatus = async (
     return area;
 };
 
+const getAllAreaForRegistration = async () => {
+    const areas = await prisma.area.findMany();
+    return areas;
+}
+
 export const AreaServices = {
     createArea,
     getAllAreas,
     getAreaById,
     updateArea,
     updateAreaStatus,
+    getAllAreaForRegistration,
 };

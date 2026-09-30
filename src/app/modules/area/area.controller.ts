@@ -99,10 +99,26 @@ const updateAreaStatus = catchAsync(
     },
 );
 
+// for registraion
+const getAllAreaForRegistration = catchAsync(
+    async (req: Request, res: Response) => {
+
+        const result = await AreaServices.getAllAreaForRegistration();
+
+        sendResponse(res, {
+            success: true,
+            statusCode: httpStatus.OK,
+            message: "Areas retrieved successfully",
+            data: result,
+        });
+    },
+);
+
 export const AreaController = {
     createArea,
     getAllAreas,
     getAreaById,
     updateArea,
     updateAreaStatus,
+    getAllAreaForRegistration,
 };

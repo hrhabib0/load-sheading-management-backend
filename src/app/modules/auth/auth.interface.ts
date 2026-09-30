@@ -6,7 +6,6 @@ export interface IRegisterUserPayload {
     password: string;
     phone?: string;
     areaId: string;
-    priorityId: string;
 }
 
 export interface IVerifyEmailPayload {

@@ -14,11 +14,15 @@ router.post(
     AreaController.createArea,
 );
 
+// for staff
 router.get(
     "/",
     auth(UserRole.ADMIN, UserRole.ZONE_MANAGER, UserRole.POWER_OPERATOR),
     AreaController.getAllAreas,
 );
+
+// get area data for registration
+router.get("/customer-area", AreaController.getAllAreaForRegistration);
 
 router.get(
     "/:id",

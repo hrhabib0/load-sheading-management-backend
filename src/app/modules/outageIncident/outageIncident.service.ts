@@ -238,6 +238,65 @@ const getAllOutageIncidents = async (
 };
 
 
+const getMyAreaOutageStatus = async (userId: string) => {
+    const incident = await prisma.outageIncident.findFirst({
+        where: {
+            status: {
+                in: [
+                    "INVESTIGATING",
+                    "REPAIRING",
+                    "RESTORATION_PENDING",
+                ],
+            },
+
+            feeder: {
+                areas: {
+                    some: {
+                        customerProfiles: {
+                            some: {
+                                userId,
+                            },
+                        },
+                    },
+                },
+            },
+        },
+
+        orderBy: {
+            createdAt: "desc",
+        },
+
+        select: {
+            id: true,
+            status: true,
+            description: true,
+            startedAt: true,
+            feeder: {
+                select: {
+                    id: true,
+                    name: true,
+                    code: true,
+                },
+            },
+        },
+    });
+
+    if (!incident) {
+        return {
+            isPowerAvailable: true,
+            status: "NORMAL",
+            incident: null,
+        };
+    }
+
+    return {
+        isPowerAvailable: false,
+        status: incident.status,
+        incident,
+    };
+};
+
+
 const getOutageIncidentById = async (
     incidentId: string,
     user: IUserContext,
@@ -911,6 +970,7 @@ const closeIncident = async (
 export const OutageIncidentServices = {
     createOutageIncident,
     getAllOutageIncidents,
+    getMyAreaOutageStatus,
     getOutageIncidentById,
     linkCustomerReport,
     startRepair,

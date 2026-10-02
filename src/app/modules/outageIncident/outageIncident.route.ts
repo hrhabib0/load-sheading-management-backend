@@ -22,6 +22,12 @@ router.get(
     OutageIncidentController.getAllOutageIncidents,
 );
 
+router.get(
+  "/my-area",
+  auth(UserRole.CUSTOMER),
+  OutageIncidentController.getMyAreaOutageStatus,
+);
+
 router.patch(
     "/:id/link-report",
     auth(UserRole.ADMIN, UserRole.ZONE_MANAGER, UserRole.POWER_OPERATOR),

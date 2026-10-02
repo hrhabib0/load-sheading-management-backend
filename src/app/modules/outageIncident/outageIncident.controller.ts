@@ -43,6 +43,22 @@ const getAllOutageIncidents = catchAsync(
     },
 );
 
+const getMyAreaOutageStatus = catchAsync(
+    async (req: Request, res: Response) => {
+        const userId = req.user!.userId;
+
+        const result =
+            await OutageIncidentServices.getMyAreaOutageStatus(userId);
+
+        sendResponse(res, {
+            success: true,
+            statusCode: httpStatus.OK,
+            message: "Area outage status retrieved successfully",
+            data: result,
+        });
+    },
+);
+
 const getOutageIncidentById = catchAsync(
     async (req: Request, res: Response) => {
         const incidentId = req.params.id as string;
@@ -170,6 +186,7 @@ const closeIncident = catchAsync(
 export const OutageIncidentController = {
     createOutageIncident,
     getAllOutageIncidents,
+    getMyAreaOutageStatus,
     getOutageIncidentById,
     linkCustomerReport,
     startRepair,

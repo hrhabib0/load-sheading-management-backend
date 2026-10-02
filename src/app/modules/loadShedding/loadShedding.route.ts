@@ -24,6 +24,12 @@ router.get(
 );
 
 router.get(
+    "/schedules/my-area",
+    auth(UserRole.CUSTOMER),
+    LoadSheddingController.getMyAreaSchedules,
+);
+
+router.get(
     "/schedules/:id",
     auth(UserRole.ADMIN, UserRole.ZONE_MANAGER, UserRole.POWER_OPERATOR),
     LoadSheddingController.getLoadSheddingScheduleById,

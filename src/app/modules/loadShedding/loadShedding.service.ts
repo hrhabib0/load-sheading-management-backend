@@ -305,6 +305,36 @@ const getAllLoadSheddingSchedules = async (
     return schedules;
 };
 
+const getMyAreaSchedules = async (userId: string) => {
+    const schedules = await prisma.loadSheddingSchedule.findMany({
+        where: {
+            status: LoadSheddingScheduleStatus.PUBLISHED,
+            scheduledEndAt: {
+                gte: new Date()
+            },
+            feeders: {
+                some: {
+                    feeder: {
+                        areas: {
+                            some: {
+                                customerProfiles: {
+                                    some: {
+                                        userId,
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+        orderBy: {
+            scheduledStartAt: "asc",
+        },
+    });
+    return schedules;
+}
+
 
 const getLoadSheddingScheduleById = async (
     scheduleId: string,
@@ -1210,6 +1240,7 @@ const cancelLoadSheddingSchedule = async (
 export const LoadSheddingServices = {
     createLoadSheddingSchedule,
     getAllLoadSheddingSchedules,
+    getMyAreaSchedules,
     getLoadSheddingScheduleById,
     updateLoadSheddingSchedule,
     submitLoadSheddingScheduleForApproval,

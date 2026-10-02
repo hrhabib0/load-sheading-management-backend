@@ -22,6 +22,12 @@ router.patch(
 );
 
 router.get(
+    "/my-reports",
+    auth(UserRole.CUSTOMER),
+    CustomerController.getMyReports,
+);
+
+router.get(
     "/me/load-shedding-schedules",
     auth(UserRole.CUSTOMER),
     CustomerController.getMyLoadSheddingSchedules,

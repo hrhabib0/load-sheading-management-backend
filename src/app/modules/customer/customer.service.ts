@@ -133,6 +133,21 @@ const updateMyProfile = async (
     return updatedCustomer;
 };
 
+const getMyReports = async (userId: string) => {
+    const reports = await prisma.customerReport.findMany({
+        where: {
+            customer: {
+                userId,
+            },
+        },
+        orderBy: {
+            reportedAt: "desc",
+        },
+    });
+
+    return reports;
+};
+
 const getAllCustomers = async (user: IUserContext) => {
 
     const customers = await prisma.user.findMany({
@@ -603,6 +618,7 @@ const getMyLoadSheddingSchedules = async (
 export const CustomerServices = {
     getMyProfile,
     updateMyProfile,
+    getMyReports,
     getAllCustomers,
     getCustomerById,
     updateCustomerByStaff,

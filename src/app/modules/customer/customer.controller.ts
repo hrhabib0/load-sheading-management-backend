@@ -3,6 +3,7 @@ import httpStatus from "http-status";
 import { catchAsync } from "../../utils/catchAsync.js";
 import { CustomerServices } from "./customer.service.js";
 import { sendResponse } from "../../utils/sendResponse.js";
+import { AppError } from "../../errors/AppError.js";
 
 
 const getMyProfile = catchAsync(
@@ -34,6 +35,24 @@ const updateMyProfile = catchAsync(
             success: true,
             statusCode: httpStatus.OK,
             message: "Customer profile updated successfully",
+            data: result,
+        });
+    },
+);
+
+const getMyReports = catchAsync(
+    async (req: Request, res: Response) => {
+        const userId = req.user?.userId;
+        if(!userId) {
+            throw new AppError(httpStatus.UNAUTHORIZED, "User not authenticated");
+        }
+
+        const result = await CustomerServices.getMyReports(userId);
+
+        sendResponse(res, {
+            statusCode: httpStatus.OK,
+            success: true,
+            message: "Customer reports retrieved successfully",
             data: result,
         });
     },
@@ -135,6 +154,7 @@ const getMyLoadSheddingSchedules = catchAsync(
 export const CustomerController = {
     getMyProfile,
     updateMyProfile,
+    getMyReports,
     getAllCustomers,
     getCustomerById,
     updateCustomerByStaff,

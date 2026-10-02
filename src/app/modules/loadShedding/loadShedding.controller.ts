@@ -40,6 +40,21 @@ const getAllLoadSheddingSchedules = catchAsync(
     },
 );
 
+const getMyAreaSchedules = catchAsync(
+    async (req: Request, res: Response) => {
+        const userId = req.user?.userId;
+
+        const result = await LoadSheddingServices.getMyAreaSchedules(userId as string);
+
+        sendResponse(res, {
+            success: true,
+            statusCode: httpStatus.OK,
+            message: "Load-shedding schedules retrieved successfully",
+            data: result,
+        });
+    }
+)
+
 const getLoadSheddingScheduleById = catchAsync(
     async (req: Request, res: Response) => {
         const schedulesId = req.params.id as string;
@@ -194,6 +209,7 @@ const cancelLoadSheddingSchedule = catchAsync(
 export const LoadSheddingController = {
     createLoadSheddingSchedule,
     getAllLoadSheddingSchedules,
+    getMyAreaSchedules,
     getLoadSheddingScheduleById,
     updateLoadSheddingSchedule,
     submitLoadSheddingScheduleForApproval,

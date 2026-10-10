@@ -26,8 +26,9 @@ app.use(cors({
     origin: config.frontend_url,
     credentials: true
 }));
-app.use(express.json());
+
 app.use(cookieParser());
+app.use(express.json());
 
 
 // modules route

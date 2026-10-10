@@ -28,7 +28,6 @@ const verifyUserEmail = catchAsync(async (req: Request, res: Response) => {
 const loginUser = catchAsync(async (req: Request, res: Response) => {
     const { accessToken, refreshToken, user } = await AuthServices.loginUser(req.body);
 
-    // set token into cookies
     res.cookie("accessToken", accessToken, {
         httpOnly: true,
         secure: config.node_env === "development" ? false : true,
@@ -37,9 +36,9 @@ const loginUser = catchAsync(async (req: Request, res: Response) => {
     });
     res.cookie("refreshToken", refreshToken, {
         httpOnly: true,
-        secure: false,
-        sameSite: "none",
-        maxAge: 1000 * 60 * 60 * 24 * 7, // 7 day
+        secure: config.node_env === "development" ? false : true,
+        sameSite: config.node_env === "development" ? "lax" : "none",
+        maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
     });
 
     sendResponse(res, {
@@ -62,8 +61,18 @@ const getMe = catchAsync(async (req: Request, res: Response) => {
 });
 
 const logoutUser = catchAsync(async (_req: Request, res: Response) => {
-    res.clearCookie("accessToken");
-    res.clearCookie("refreshToken");
+    res.clearCookie("accessToken", {
+        httpOnly: true,
+        secure: config.node_env === "development" ? false : true,
+        sameSite: config.node_env === "development" ? "lax" : "none",
+        path: "/",
+    });
+    res.clearCookie("refreshToken", {
+        httpOnly: true,
+        secure: config.node_env === "development" ? false : true,
+        sameSite: config.node_env === "development" ? "lax" : "none",
+        path: "/",
+    });
 
     res.status(httpStatus.OK).json({
         success: true,

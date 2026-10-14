@@ -19,6 +19,7 @@ import { WorkTaskRoutes } from "./app/modules/workTask/workTask.route.js";
 import { PaymentRoutes } from "./app/modules/payment/payment.route.js";
 import config from "./app/config/index.js";
 import { UserRoutes } from "./app/modules/user/user.route.js";
+import { AnalyticsRoutes } from "./app/modules/analytics/analytics.route.js";
 
 const app = express();
 
@@ -45,7 +46,8 @@ app.use("/api/planned-outages", PlannedOutageRoutes);
 app.use("/api/customer-reports", CustomerReportRoutes);
 app.use("/api/outage-incidents", OutageIncidentRoutes);
 app.use("/api/work-tasks", WorkTaskRoutes);
-app.use("/api/users", UserRoutes)
+app.use("/api/users", UserRoutes);
+app.use("/api/analytics", AnalyticsRoutes);
 
 app.use("/api/payments", PaymentRoutes);
 
